@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LifeOrbit - ゲームプロデューサー向け統合目標・タスク・スケジュール管理</title>
+  <meta name="description" content="目標(Goals)・タスク(Tasks)・スケジュール(Garoon iCS連携)をシームレスに一括管理し、空き時間を可視化するゲームプロデューサー特化型SPA。">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 背景のエフェクト用装飾要素 -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <div class="app-container">
+    <!-- サイドバーナビゲーション -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i data-lucide="orbit" class="logo-icon"></i>
+          <span class="logo-text">LifeOrbit</span>
+        </div>
+        <span class="badge badge-producer">PRODUCER</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>ダッシュボード</span>
+        </button>
+        <button class="nav-item" data-view="goals" id="nav-goals">
+          <i data-lucide="target"></i>
+          <span>目標 (Goals)</span>
+        </button>
+        <button class="nav-item" data-view="tasks" id="nav-tasks">
+          <i data-lucide="check-square"></i>
+          <span>タスク (Tasks)</span>
+        </button>
+        <button class="nav-item" data-view="calendar" id="nav-calendar">
+          <i data-lucide="calendar"></i>
+          <span>カレンダー</span>
+        </button>
+        <button class="nav-item" data-view="review" id="nav-review">
+          <i data-lucide="clipboard-check"></i>
+          <span>レビュー</span>
+        </button>
+        <button class="nav-item" data-view="settings" id="nav-settings">
+          <i data-lucide="settings"></i>
+          <span>設定・バックアップ</span>
+        </button>
+      </nav>
+
+      <!-- Garoon同期ステータスと時計 -->
+      <div class="sidebar-footer">
+        <div class="clock-panel">
+          <div class="clock-time" id="clock-time">00:00:00</div>
+          <div class="clock-date" id="clock-date">2026.07.10 FRI</div>
+        </div>
+        <div class="sync-status" id="sync-status-panel">
+          <div class="sync-indicator offline" id="sync-indicator"></div>
+          <div class="sync-info">
+            <span class="sync-title">Garoon連携</span>
+            <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- メインコンテンツ -->
+    <main class="main-content">
+      <!-- ヘッダー -->
+      <header class="main-header">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;flex-grow:1;">
+          <button class="btn-hamburger" id="btn-hamburger" style="display:none;background:transparent;border:none;color:#fff;cursor:pointer;padding:4px;flex-shrink:0;">
+            <i data-lucide="menu" style="width:22px;height:22px;"></i>
+          </button>
+          <div class="header-title-area" style="min-width:0;width:100%;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <h1 id="view-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;">ダッシュボード</h1>
+              <div id="header-sync-status-badge" style="display:inline-flex;align-items:center;"></div>
+            </div>
+            <p id="view-subtitle" class="text-secondary" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:4px 0 0 0;">今日の軌道と目標の進捗状況</p>
+          </div>
+        </div>
+
+      </header>
+
+      <!-- ビューコンテナ -->
+      <div class="view-content">
+        
+        <!-- VIEW: ダッシュボード -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="dashboard-grid">
+            <!-- 左カラム: スケジュールと空き時間 -->
+            <div class="grid-col-left">
+              <div class="card card-timeline glass">
+                <div class="card-header">
+                  <div class="header-left">
+                    <i data-lucide="clock" class="text-purple"></i>
+                    <h2>今日の予定</h2>
+                  </div>
+                  <span class="badge badge-info" id="free-time-badge">空き時間: 計算中</span>
+                </div>
+                <div class="timeline-container" id="timeline-today">
+                  <!-- スケジュールと空き時間が動的に挿入される -->
+                </div>
+              </div>
+            </div>
+
+            <!-- 右カラム: 目標進捗と雑タスク -->
+            <div class="grid-col-right">
+              <!-- 目標進捗サマリー -->
+              <div class="card card-goals-summary glass">
+                <div class="card-header">
+                  <div class="header-left">
+                    <i data-lucide="target" class="text-cyan"></i>
+                    <h2>2026年度目標</h2>
+                  </div>
+                </div>
+                <div class="goals-progress-list" id="dashboard-goals-list">
+                  <!-- 目標進捗ゲージが動的に生成される -->
+                </div>
+              </div>
+
+              <!-- 今日のタスク (今日やる) -->
+              <div class="card card-todo-today glass">
+                <div class="card-header">
+                  <div class="header-left">
+                    <i data-lucide="check-square" class="text-emerald"></i>
+                    <h2>タスク</h2>
+                  </div>
+                  <button class="btn btn-icon btn-sm" id="btn-add-quick-todo" title="今日やるタスクを追加">
+                    <i data-lucide="plus"></i>
+                  </button>
+                </div>
+                <div class="todo-quick-list" id="dashboard-todo-list">
+                  <!-- 今日やるタスクが動的に生成される -->
+                </div>
+                <div class="todo-quick-input-area" id="todo-quick-input-area" style="display:none;">
+                  <input type="text" id="input-quick-todo" placeholder="今日やるタスクを入力してEnter" class="input-text">
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: 目標 (Goals) -->
+        <section id="view-goals" class="view-section">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="font-size:18px;font-weight:700;margin:0;">大目標とマイルストーン</h2>
+            <button onclick="openAddGoalModal()" class="btn btn-primary btn-sm" style="display:flex;align-items:center;gap:6px;padding:6px 14px;font-size:12px;cursor:pointer;">
+              目標を追加
+            </button>
+          </div>
+          <div class="goals-grid" id="goals-container">
+            <!-- 4つの大目標詳細カードが動的に入る -->
+          </div>
+        </section>
+
+        <!-- VIEW: タスク (Tasks) -->
+        <section id="view-tasks" class="view-section">
+          <div class="tasks-filter-bar glass">
+            <div class="filter-group">
+              <label for="filter-goal">目標フィルター:</label>
+              <select id="filter-goal" class="select-control">
+                <option value="all">すべての目標・タスク</option>
+                <option value="none">雑タスクのみ</option>
+                <!-- 目標オプションが動的に追加される -->
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="filter-priority">優先度:</label>
+              <select id="filter-priority" class="select-control">
+                <option value="all">すべて</option>
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-add-task-board">
+              <i data-lucide="plus"></i><span>新規タスク</span>
+            </button>
+          </div>
+
+          <!-- カンバンボード -->
+          <div class="kanban-board">
+            <!-- 今日やる カラム -->
+            <div class="kanban-column" id="col-today" data-status="today">
+              <div class="column-header">
+                <h3>今日やる</h3>
+                <span class="column-count" id="count-today">0</span>
+              </div>
+              <div class="kanban-cards" id="cards-today">
+                <!-- タスクカードが動的に挿入される -->
+              </div>
+            </div>
+
+            <!-- 今週やる カラム -->
+            <div class="kanban-column" id="col-this_week" data-status="this_week">
+              <div class="column-header">
+                <h3>今週やる</h3>
+                <span class="column-count" id="count-this_week">0</span>
+              </div>
+              <div class="kanban-cards" id="cards-this_week">
+                <!-- タスクカードが動的に挿入される -->
+              </div>
+            </div>
+
+            <!-- 来週以降 カラム -->
+            <div class="kanban-column" id="col-next_week" data-status="next_week_and_later">
+              <div class="column-header">
+                <h3>来週以降</h3>
+                <span class="column-count" id="count-next_week">0</span>
+              </div>
+              <div class="kanban-cards" id="cards-next_week">
+                <!-- タスクカードが動的に挿入される -->
+              </div>
+            </div>
+
+            <!-- 対応待ち カラム -->
+            <div class="kanban-column" id="col-waiting" data-status="waiting">
+              <div class="column-header">
+                <h3>対応待ち</h3>
+                <span class="column-count" id="count-waiting">0</span>
+              </div>
+              <div class="kanban-cards" id="cards-waiting">
+                <!-- タスクカードが動的に挿入される -->
+              </div>
+            </div>
+
+            <!-- 完了 カラム -->
+            <div class="kanban-column" id="col-completed" data-status="completed">
+              <div class="column-header">
+                <h3>完了</h3>
+                <span class="column-count" id="count-completed">0</span>
+              </div>
+              <div class="kanban-cards" id="cards-completed">
+                <!-- タスクカードが動的に挿入される -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: カレンダー -->
+        <section id="view-calendar" class="view-section">
+          <!-- iCSドラッグ＆ドロップインポートエリア -->
+          <div class="ics-drop-zone glass" id="ics-drop-zone">
+            <i data-lucide="file-up" class="drop-icon"></i>
+            <div class="drop-text">
+              <h3>Garoon スケジュールインポート</h3>
+              <p>Garoonからエクスポートした <strong>.ics ファイル</strong> をここにドラッグ＆ドロップ、または <span class="browse-link" id="browse-ics-link">ファイルを選択</span> して読み込ませてください。</p>
+            </div>
+            <input type="file" id="ics-file-input" accept=".ics" style="display:none;">
+          </div>
+
+          <div class="calendar-controls glass">
+            <div class="calendar-nav-buttons">
+              <button class="btn btn-icon" id="btn-cal-prev" title="前へ"><i data-lucide="chevron-left"></i></button>
+              <h2 id="calendar-title">2026年 7月</h2>
+              <button class="btn btn-icon" id="btn-cal-next" title="次へ"><i data-lucide="chevron-right"></i></button>
+              <button class="btn btn-secondary btn-sm" id="btn-cal-today">今日</button>
+            </div>
+            <div class="calendar-view-modes">
+              <button class="btn-toggle active" id="btn-view-week">週間</button>
+              <button class="btn-toggle" id="btn-view-month">月間</button>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-add-schedule">
+              <i data-lucide="plus"></i><span>予定追加</span>
+            </button>
+          </div>
+
+          <!-- 月間カレンダービュー -->
+          <div class="calendar-month-view glass" id="calendar-month-container">
+            <div class="calendar-grid-header">
+              <div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div><div>日</div>
+            </div>
+            <div class="calendar-grid-body" id="calendar-month-grid">
+              <!-- 日付セルが動的に挿入される -->
+            </div>
+          </div>
+
+          <!-- 週間バーチカルビュー -->
+          <div class="calendar-week-view glass" id="calendar-week-container" style="display:none;">
+            <div class="week-grid-header" id="week-grid-header">
+              <!-- 曜日ヘッダーが動的に挿入される -->
+            </div>
+            <div class="week-grid-body-container">
+              <div class="week-time-axis">
+                <!-- 時間軸 (00:00 - 23:00) -->
+              </div>
+              <div class="week-grid-body" id="calendar-week-grid">
+                <!-- 週間スケジュールグリッド -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: レビュー (Daily / Weekly Review) -->
+        <section id="view-review" class="view-section">
+          <!-- レビュー操作コントロール -->
+          <div class="calendar-controls glass" style="margin-bottom:16px;">
+            <div class="calendar-nav-buttons" style="gap:12px;">
+              <h2 id="review-period-title" style="font-size:16px;font-weight:700;margin:0;">2026.07.10 の振り返り</h2>
+            </div>
+            <div class="calendar-view-modes">
+              <button class="btn-toggle active" id="btn-review-daily" onclick="changeReviewMode('daily')">デイリー</button>
+              <button class="btn-toggle" id="btn-review-weekly" onclick="changeReviewMode('weekly')">ウィークリー</button>
+            </div>
+          </div>
+
+          <!-- 達成感の大きな統計パネル -->
+          <div id="review-stats-summary" style="margin-bottom: 16px;"></div>
+
+          <div class="review-grid" style="display:grid;grid-template-columns:1fr 1.2fr;gap:16px;align-items:start;">
+            <!-- 左カラム: 目標・マイルストーン -->
+            <div class="card glass" style="max-height: 530px; display:flex; flex-direction:column;">
+              <div class="card-header">
+                <div class="header-left">
+                  <i data-lucide="target" class="text-cyan"></i>
+                  <h2>目標・マイルストーン</h2>
+                </div>
+              </div>
+              <div class="card-body" id="review-goals-list" style="display:flex;flex-direction:column;gap:12px;padding:14px;overflow-y:auto;flex-grow:1;">
+                <!-- 目標進捗とマイルストーンが動的に配置されます -->
+              </div>
+            </div>
+
+            <!-- 右カラム: 完了タスク と 未完了タスクの棚卸し を上下に配置 -->
+            <div style="display:flex;flex-direction:column;gap:16px;max-height: 530px;">
+              <!-- 1. 実績（完了タスク） -->
+              <div class="card glass" style="display:flex; flex-direction:column; max-height:220px;">
+                <div class="card-header" style="padding:10px 14px;">
+                  <div class="header-left">
+                    <i data-lucide="check-circle" class="text-emerald"></i>
+                    <h2>完了したタスク</h2>
+                  </div>
+                  <span class="badge badge-success" id="review-completed-count">0件完了</span>
+                </div>
+                <div class="card-body" id="review-completed-list" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding:12px 14px;flex-grow:1;">
+                  <!-- 完了したタスク一覧 -->
+                </div>
+              </div>
+
+              <!-- 2. 残タスクの棚卸し -->
+              <div class="card glass" style="display:flex; flex-direction:column; max-height:294px;">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;">
+                  <div class="header-left">
+                    <i data-lucide="alert-circle" class="text-amber"></i>
+                    <h2>未完了タスクの棚卸し</h2>
+                  </div>
+                  <div style="display:flex;gap:6px;">
+                    <button class="btn btn-secondary btn-sm" onclick="bulkMoveReviewTasks()" style="padding:3px 8px;font-size:11px;cursor:pointer;">すべて先送り</button>
+                    <button class="btn btn-danger btn-sm" onclick="bulkDeleteReviewTasks()" style="padding:3px 8px;font-size:11px;cursor:pointer;">すべて削除</button>
+                  </div>
+                </div>
+                <div class="card-body" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex-grow:1;">
+                  <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 4px 0;">残っているタスクをどうするか決定してください。来週/今週へ「先送り」するか、不要なら「削除」します。</p>
+                  <div id="review-pending-list" style="display:flex;flex-direction:column;gap:6px;">
+                    <!-- 未完了タスク一覧 -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: 設定・バックアップ -->
+        <section id="view-settings" class="view-section">
+          <div class="settings-grid">
+            <div class="card glass">
+              <div class="card-header">
+                <h2>データバックアップ (エクスポート・インポート)</h2>
+              </div>
+              <div class="card-body">
+                <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:0;">LifeOrbitのデータは、お使いのブラウザ（localStorage）または同期中のオンラインDB（Firebase）に保存されています。万が一のバックアップやデータの移行のために、すべてのデータをJSONファイルとしてローカルPCにダウンロードできます。※オンライン同期中は、サーバー上の最新データがダウンロードされます。</p>
+                <div class="settings-actions">
+                  <button class="btn btn-primary" id="btn-export-data">
+                    <i data-lucide="download"></i>
+                    <span>データをエクスポート (JSON)</span>
+                  </button>
+                  <button class="btn btn-secondary" id="btn-import-trigger">
+                    <i data-lucide="upload"></i>
+                    <span>データをインポート (JSON)</span>
+                  </button>
+                  <input type="file" id="import-file-input" accept=".json" style="display:none;">
+                </div>
+              </div>
+            </div>
+
+            <div class="card glass">
+              <div class="card-header">
+                <h2>Firebaseオンライン同期設定</h2>
+              </div>
+              <div class="card-body">
+                <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:0;">Firebaseを設定することで、データをオンラインに保存し、複数デバイス間でリアルタイムに同期できるようになります。</p>
+                
+                <!-- 未ログイン時 -->
+                <div id="firebase-logged-out" style="display:flex;flex-direction:column;gap:12px;margin-bottom:8px;">
+                  <div class="form-group" style="margin:0;">
+                    <label for="fb-config-json">Firebase Config (SDK 設定のJSON)</label>
+                    <textarea id="fb-config-json" rows="4" placeholder='例:
+{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-app",
+  "appId": "1:..."
+}' style="width:100%;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:4px;padding:8px;font-size:11px;font-family:monospace;box-sizing:border-box;margin-top:4px;"></textarea>
+                  </div>
+                  <div style="display:flex;gap:8px;">
+                    <button class="btn btn-primary btn-sm" id="btn-save-fb-config" onclick="saveFirebaseConfig()" style="cursor:pointer;">設定を保存して初期化</button>
+                  </div>
+                  
+                  <div id="fb-auth-section" style="display:none;margin-top:12px;border-top:1px solid rgba(255,255,255,0.05);padding-top:12px;flex-direction:column;gap:10px;">
+                    <div class="form-row" style="display:flex;gap:8px;margin-bottom:0;">
+                      <div class="form-group" style="flex:1;margin:0;">
+                        <label for="fb-email">メールアドレス</label>
+                        <input type="email" id="fb-email" placeholder="email@example.com" class="input-text" style="font-size:12px;padding:6px;width:100%;box-sizing:border-box;margin-top:4px;">
+                      </div>
+                      <div class="form-group" style="flex:1;margin:0;">
+                        <label for="fb-password">パスワード</label>
+                        <input type="password" id="fb-password" placeholder="••••••••" class="input-text" style="font-size:12px;padding:6px;width:100%;box-sizing:border-box;margin-top:4px;">
+                      </div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                      <button class="btn btn-success btn-sm" onclick="firebaseLogin()" style="flex:1;cursor:pointer;">ログイン</button>
+                      <button class="btn btn-secondary btn-sm" onclick="firebaseSignUp()" style="flex:1;cursor:pointer;">新規登録</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ログイン済時 -->
+                <div id="firebase-logged-in" style="display:none;flex-direction:column;gap:10px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:6px;padding:12px;margin-bottom:8px;box-sizing:border-box;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                    <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);"><i data-lucide="cloud" class="text-emerald" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> オンライン同期中</span>
+                    <span id="fb-user-email" style="font-size:11.5px;color:rgba(255,255,255,0.5);font-family:monospace;">email@example.com</span>
+                  </div>
+                  <div style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary btn-sm" onclick="firebaseLogout()" style="flex:1;padding:5px;cursor:pointer;">ログアウト</button>
+                    <button class="btn btn-danger btn-sm" onclick="clearFirebaseConfig()" style="flex:1;padding:5px;cursor:pointer;">連携解除</button>
+                  </div>
+                  <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; margin-top: 4px;">
+                    <p style="font-size:11px;color:rgba(255,255,255,0.45);margin:0 0 6px 0;">開発環境等で登録したローカルデータを、この同期先DBに一括反映（デプロイ）します。</p>
+                    <button class="btn btn-primary btn-sm" onclick="deployDataToFirebase()" style="width:100%;cursor:pointer;padding:6px;font-size:11.5px;justify-content:center;background:#10b981;border-color:#10b981;font-weight:700;">
+                      <i data-lucide="upload-cloud"></i> ローカルデータをこのDBにデプロイ
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card glass">
+              <div class="card-header">
+                <h2>データの初期化・一括クリア</h2>
+              </div>
+              <div class="card-body">
+                <p class="text-danger" style="font-size:11.5px;color:#f87171;margin-top:0;margin-bottom:12px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> 注意：削除されたデータは元に戻せません。同期中の場合はオンラインDB側のデータもクリアされます。</p>
+                <div class="settings-actions" style="display:flex;flex-wrap:wrap;gap:8px;">
+                  <button class="btn btn-danger btn-sm" id="btn-reset-app" style="cursor:pointer;padding:6px 12px;font-size:11.5px;flex:1 1 45%;justify-content:center;">
+                    <i data-lucide="rotate-ccw"></i> サンプルデータで初期化
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="resetDataCategory('tasks')" style="cursor:pointer;padding:6px 12px;font-size:11.5px;flex:1 1 45%;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);justify-content:center;">
+                    <i data-lucide="trash-2"></i> タスクを一括削除
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="resetDataCategory('schedules')" style="cursor:pointer;padding:6px 12px;font-size:11.5px;flex:1 1 45%;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);justify-content:center;">
+                    <i data-lucide="trash-2"></i> スケジュールを一括削除
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="resetDataCategory('goals')" style="cursor:pointer;padding:6px 12px;font-size:11.5px;flex:1 1 45%;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);justify-content:center;">
+                    <i data-lucide="trash-2"></i> 目標を一括削除
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="resetDataCategory('all')" style="cursor:pointer;padding:6px 12px;font-size:11.5px;flex:1 1 100%;background:rgba(239,68,68,0.25);border:1px solid #ef4444;justify-content:center;">
+                    <i data-lucide="flame"></i> すべてのデータをクリア（空にする）
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card glass">
+              <div class="card-header">
+                <h2>ゲームプロデューサー専用ショートカット</h2>
+              </div>
+              <div class="card-body">
+                <p>各タイトルごとのマイルストーンタスクを簡単に追加・管理するためのクイックテンプレートです。</p>
+                <div class="settings-actions">
+                  <button class="btn btn-secondary" id="btn-quick-milestone-life">『LIFE』のマイルストーン追加</button>
+                  <button class="btn btn-secondary" id="btn-quick-milestone-ninpri">『NinPriR』のマイルストーン追加</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+
+
+  <!-- タスク追加/編集モーダル -->
+  <div class="modal-overlay" id="modal-task-form">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h2 id="task-modal-title">新規タスク追加</h2>
+        <button class="btn-close-modal"><i data-lucide="x"></i></button>
+      </div>
+      <form id="task-form">
+        <input type="hidden" id="task-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="task-title">タスク名 <span class="required">*</span></label>
+            <input type="text" id="task-title" required placeholder="例: Steamストアページのモックアップ作成" class="input-text">
+          </div>
+          
+          <div class="form-group">
+            <label>関連目標</label>
+            <!-- 既存のセレクトボックスはJS連携のため非表示で残す -->
+            <select id="task-goal" class="select-control" style="display: none;">
+              <option value="none">なし（雑タスク・ルーチン）</option>
+              <!-- 動的生成 -->
+            </select>
+            <!-- アイコンでコンパクトな目標バッジ選択コンテナ -->
+            <div id="task-goal-badge-selector" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+          </div>
+          
+          <div class="form-group" id="task-parent-group" style="display: flex; flex-direction: column; gap: 4px;">
+            <label for="task-parent">マイルストーン（親タスク）</label>
+            <select id="task-parent" class="select-control">
+              <option value="none">紐づけなし</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="task-status">ステータス</label>
+            <select id="task-status" class="select-control">
+              <option value="today" selected>今日やる</option>
+              <option value="this_week">今週やる</option>
+              <option value="next_week_and_later">来週以降</option>
+              <option value="waiting">対応待ち</option>
+              <option value="completed">完了</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="task-priority">優先度</label>
+              <select id="task-priority" class="select-control">
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="task-duedate">期日</label>
+              <input type="date" id="task-duedate" class="input-text">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="task-desc">説明・メモ</label>
+            <textarea id="task-desc" placeholder="タスクの詳細やメモ" class="input-textarea" rows="3"></textarea>
+          </div>
+
+          <!-- 子タスク（サブタスク）管理セクション -->
+          <div class="form-group" id="subtasks-section" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; margin-top: 12px;">
+            <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span>子タスク (サブタスク)</span>
+              <span id="subtasks-count" style="font-size: 11px; color: var(--text-muted); font-weight: normal;">0件</span>
+            </label>
+            
+            <div id="modal-subtask-list" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; padding-right: 4px;">
+              <!-- 子タスク一覧が動的に挿入される -->
+            </div>
+
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="new-subtask-title" placeholder="新しい子タスクを追加..." class="input-text" style="font-size: 12px; height: 30px; flex-grow: 1;">
+              <button type="button" id="btn-add-subtask" class="btn btn-secondary" style="height: 30px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                追加
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-close-modal">キャンセル</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- スケジュール追加/編集モーダル -->
+  <div class="modal-overlay" id="modal-schedule-form">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h2 id="schedule-modal-title">新規スケジュール追加</h2>
+        <button class="btn-close-modal"><i data-lucide="x"></i></button>
+      </div>
+      <form id="schedule-form">
+        <input type="hidden" id="schedule-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="schedule-title">予定名 <span class="required">*</span></label>
+            <input type="text" id="schedule-title" required placeholder="例: LIFE 開発進捗定例ミーティング" class="input-text">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="schedule-start-date">開始日 <span class="required">*</span></label>
+              <input type="date" id="schedule-start-date" required class="input-text">
+            </div>
+            <div class="form-group">
+              <label for="schedule-start-time">開始時刻</label>
+              <input type="time" id="schedule-start-time" class="input-text" value="10:00">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="schedule-end-date">終了日 <span class="required">*</span></label>
+              <input type="date" id="schedule-end-date" required class="input-text">
+            </div>
+            <div class="form-group">
+              <label for="schedule-end-time">終了時刻</label>
+              <input type="time" id="schedule-end-time" class="input-text" value="11:00">
+            </div>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="schedule-allday">
+            <label for="schedule-allday">終日予定</label>
+          </div>
+
+          <div class="form-group">
+            <label for="schedule-desc">説明・メモ</label>
+            <textarea id="schedule-desc" placeholder="場所、議題、参加メンバーなど" class="input-textarea" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-close-modal">キャンセル</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 目標追加/編集モーダル -->
+  <div class="modal-overlay" id="modal-goal-form">
+    <div class="modal-content glass" style="max-width:550px;">
+      <div class="modal-header">
+        <h2 id="goal-modal-title">目標の追加・編集</h2>
+        <button class="btn-close-modal"><i data-lucide="x"></i></button>
+      </div>
+      <form id="goal-form">
+        <input type="hidden" id="goal-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="goal-title">目標名 <span class="required">*</span></label>
+            <input type="text" id="goal-title" required placeholder="例: 超大型SFオンラインRPG『LIFE』のリリース" class="input-text">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="goal-shortname">略称 <span class="required">*</span></label>
+              <input type="text" id="goal-shortname" required placeholder="例: LIFE" class="input-text">
+            </div>
+            <div class="form-group">
+              <label>テーマカラー</label>
+              <input type="hidden" id="goal-color" value="#3b82f6">
+              <div id="goal-color-palette" style="display:grid;grid-template-columns:repeat(6, 1fr);gap:6px;margin-top:4px;">
+                <!-- JSでカラーボタンを生成 -->
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="goal-metric">説明・指標テキスト</label>
+            <input type="text" id="goal-metric" placeholder="例: KPI: DAU 10万人突破" class="input-text">
+          </div>
+
+          <div class="form-group" style="margin-top:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <label style="font-weight:600;margin:0;">マイルストーン設定</label>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-add-milestone" style="padding:2px 8px;font-size:11px;">+ 追加</button>
+            </div>
+            <div id="modal-milestones-list" style="display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto;padding-right:4px;">
+              <!-- マイルストーン設定行が動的に追加されます -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="display:flex;justify-content:space-between;">
+          <button type="button" class="btn btn-danger" id="btn-delete-goal" style="display:none;">目標を削除</button>
+          <div style="display:flex;gap:8px;margin-left:auto;">
+            <button type="button" class="btn btn-secondary btn-close-modal">キャンセル</button>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript Error Logger -->
+  <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.top = '10px';
+      errDiv.style.left = '10px';
+      errDiv.style.right = '10px';
+      errDiv.style.background = 'rgba(255, 0, 0, 0.95)';
+      errDiv.style.color = '#fff';
+      errDiv.style.padding = '20px';
+      errDiv.style.zIndex = '99999';
+      errDiv.style.borderRadius = '8px';
+      errDiv.style.fontSize = '14px';
+      errDiv.style.fontFamily = 'monospace';
+      errDiv.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      errDiv.style.maxHeight = '80vh';
+      errDiv.style.overflow = 'auto';
+      errDiv.innerHTML = '<strong>[Runtime Error]</strong><br>' + message + '<br><br>Source: ' + source + '<br>Line: ' + lineno + ':' + colno + '<br><br>Stack Trace:<br>' + (error && error.stack ? error.stack.replace(/\n/g, '<br>') : 'No stack trace');
+      document.body.appendChild(errDiv);
+      return false;
+    };
+    window.addEventListener('unhandledrejection', function(event) {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.top = '10px';
+      errDiv.style.left = '10px';
+      errDiv.style.right = '10px';
+      errDiv.style.background = 'rgba(255, 0, 0, 0.95)';
+      errDiv.style.color = '#fff';
+      errDiv.style.padding = '20px';
+      errDiv.style.zIndex = '99999';
+      errDiv.style.borderRadius = '8px';
+      errDiv.style.fontSize = '14px';
+      errDiv.style.fontFamily = 'monospace';
+      errDiv.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      errDiv.style.maxHeight = '80vh';
+      errDiv.style.overflow = 'auto';
+      errDiv.innerHTML = '<strong>[Unhandled Promise Rejection]</strong><br>' + (event.reason ? (event.reason.stack || event.reason) : 'No reason');
+      document.body.appendChild(errDiv);
+    });
+  </script>
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <!-- JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
