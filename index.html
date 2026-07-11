@@ -31,7 +31,6 @@
           <i data-lucide="orbit" class="logo-icon"></i>
           <span class="logo-text">LifeOrbit</span>
         </div>
-        <span class="badge badge-producer">PRODUCER</span>
       </div>
 
       <nav class="sidebar-nav">
@@ -170,27 +169,40 @@
 
         <!-- VIEW: タスク (Tasks) -->
         <section id="view-tasks" class="view-section">
-          <div class="tasks-filter-bar glass">
-            <div class="filter-group">
-              <label for="filter-goal">目標フィルター:</label>
-              <select id="filter-goal" class="select-control">
-                <option value="all">すべての目標・タスク</option>
-                <option value="none">雑タスクのみ</option>
-                <!-- 目標オプションが動的に追加される -->
-              </select>
+          <!-- 日付表示ヘッダー -->
+          <div class="tasks-date-header glass" style="margin-bottom: 12px; padding: 8px 16px; border-radius: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">TODAY:</span>
+              <span id="tasks-today-date" style="font-size: 20px; font-weight: 800; color: #fff; text-shadow: 0 0 10px rgba(99,102,241,0.2);">----/--/-- (日)</span>
             </div>
-            <div class="filter-group">
-              <label for="filter-priority">優先度:</label>
-              <select id="filter-priority" class="select-control">
-                <option value="all">すべて</option>
-                <option value="high">高</option>
-                <option value="medium">中</option>
-                <option value="low">低</option>
-              </select>
+            <div style="display: flex; align-items: center; gap: 8px; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.15); padding: 6px 14px; border-radius: 8px;">
+              <i data-lucide="calendar" style="width: 15px; height: 15px; color: #818cf8; vertical-align: middle; margin-right: 4px;"></i>
+              <span style="font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500; margin-right: 4px;">今週の期間:</span>
+              <span id="tasks-week-range" style="font-size: 13px; font-weight: 700; color: #a5b4fc; font-family: monospace;">----/--/-- 〜 ----/--/--</span>
             </div>
-            <button class="btn btn-secondary btn-sm" id="btn-add-task-board">
-              <i data-lucide="plus"></i><span>新規タスク</span>
-            </button>
+          </div>
+
+          <div class="tasks-filter-bar glass" style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:8px 16px; flex-wrap:wrap; margin-bottom: 12px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex-grow:1;">
+              <span style="font-size:12px; color:rgba(255,255,255,0.5); font-weight:600; text-transform:uppercase; letter-spacing:0.03em;">目標フィルター:</span>
+              <div id="goal-filter-buttons" style="display:flex; gap:6px; flex-wrap:wrap;">
+                <!-- 目標アイコンボタンが動的に挿入される -->
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:16px; flex-shrink:0;">
+              <div class="filter-group" style="margin:0; display:flex; align-items:center; gap:8px;">
+                <label for="filter-priority" style="font-size:12px; margin:0; color:rgba(255,255,255,0.5); font-weight:600;">優先度:</label>
+                <select id="filter-priority" class="select-control" style="font-size:12px; height:32px; padding:0 8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff;">
+                  <option value="all">すべて</option>
+                  <option value="high">高</option>
+                  <option value="medium">中</option>
+                  <option value="low">低</option>
+                </select>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-add-task-board" style="height:32px;">
+                <i data-lucide="plus"></i><span>新規タスク</span>
+              </button>
+            </div>
           </div>
 
           <!-- カンバンボード -->
@@ -365,7 +377,6 @@
                   </div>
                 </div>
                 <div class="card-body" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex-grow:1;">
-                  <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 4px 0;">残っているタスクをどうするか決定してください。来週/今週へ「先送り」するか、不要なら「削除」します。</p>
                   <div id="review-pending-list" style="display:flex;flex-direction:column;gap:6px;">
                     <!-- 未完了タスク一覧 -->
                   </div>
@@ -400,59 +411,31 @@
 
             <div class="card glass">
               <div class="card-header">
-                <h2>Firebaseオンライン同期設定</h2>
+                <h2>☁️ 端末間クラウド同期（合言葉モード）</h2>
               </div>
               <div class="card-body">
-                <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:0;">Firebaseを設定することで、データをオンラインに保存し、複数デバイス間でリアルタイムに同期できるようになります。</p>
-                
-                <!-- 未ログイン時 -->
-                <div id="firebase-logged-out" style="display:flex;flex-direction:column;gap:12px;margin-bottom:8px;">
-                  <div class="form-group" style="margin:0;">
-                    <label for="fb-config-json">Firebase Config (SDK 設定のJSON)</label>
-                    <textarea id="fb-config-json" rows="4" placeholder='例:
-{
-  "apiKey": "AIzaSy...",
-  "authDomain": "your-app.firebaseapp.com",
-  "projectId": "your-app",
-  "appId": "1:..."
-}' style="width:100%;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:4px;padding:8px;font-size:11px;font-family:monospace;box-sizing:border-box;margin-top:4px;"></textarea>
+                <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:0;line-height:1.4;">
+                  Firebase Configと任意の「合言葉（同期キー）」を設定するだけで、別のパソコンやスマホとデータを自動で同期・共有できます。<br>
+                  <strong style="color:var(--accent);">※ログインアカウント登録は不要です。同じ合言葉を設定した端末同士が同期されます。</strong>
+                </p>
+                <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+                  <div id="sync-status-text" style="font-size:12px;color:rgba(255,255,255,0.75);padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.06);line-height:1.4;">
+                    ● 未同期 (ローカル保存モード)
                   </div>
-                  <div style="display:flex;gap:8px;">
-                    <button class="btn btn-primary btn-sm" id="btn-save-fb-config" onclick="saveFirebaseConfig()" style="cursor:pointer;">設定を保存して初期化</button>
+                  <div>
+                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px;font-weight:600;">1. Firebase Config JSON</label>
+                    <textarea id="fb-config-json" placeholder='{ "apiKey": "...", "authDomain": "...", ... }' style="width:100%;height:80px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;color:#fff;font-family:monospace;font-size:11px;box-sizing:border-box;resize:vertical;"></textarea>
                   </div>
-                  
-                  <div id="fb-auth-section" style="display:none;margin-top:12px;border-top:1px solid rgba(255,255,255,0.05);padding-top:12px;flex-direction:column;gap:10px;">
-                    <div class="form-row" style="display:flex;gap:8px;margin-bottom:0;">
-                      <div class="form-group" style="flex:1;margin:0;">
-                        <label for="fb-email">メールアドレス</label>
-                        <input type="email" id="fb-email" placeholder="email@example.com" class="input-text" style="font-size:12px;padding:6px;width:100%;box-sizing:border-box;margin-top:4px;">
-                      </div>
-                      <div class="form-group" style="flex:1;margin:0;">
-                        <label for="fb-password">パスワード</label>
-                        <input type="password" id="fb-password" placeholder="••••••••" class="input-text" style="font-size:12px;padding:6px;width:100%;box-sizing:border-box;margin-top:4px;">
-                      </div>
-                    </div>
-                    <div style="display:flex;gap:8px;">
-                      <button class="btn btn-success btn-sm" onclick="firebaseLogin()" style="flex:1;cursor:pointer;">ログイン</button>
-                      <button class="btn btn-secondary btn-sm" onclick="firebaseSignUp()" style="flex:1;cursor:pointer;">新規登録</button>
-                    </div>
+                  <div>
+                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px;font-weight:600;">2. 端末同期用の「合言葉」（他人に推測されにくい英数字）</label>
+                    <input type="text" id="fb-sync-key" placeholder="例: my-private-orbit-2026" style="width:100%;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#fff;font-size:12px;box-sizing:border-box;">
                   </div>
-                </div>
-
-                <!-- ログイン済時 -->
-                <div id="firebase-logged-in" style="display:none;flex-direction:column;gap:10px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:6px;padding:12px;margin-bottom:8px;box-sizing:border-box;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-                    <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);"><i data-lucide="cloud" class="text-emerald" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> オンライン同期中</span>
-                    <span id="fb-user-email" style="font-size:11.5px;color:rgba(255,255,255,0.5);font-family:monospace;">email@example.com</span>
-                  </div>
-                  <div style="display:flex;gap:8px;">
-                    <button class="btn btn-secondary btn-sm" onclick="firebaseLogout()" style="flex:1;padding:5px;cursor:pointer;">ログアウト</button>
-                    <button class="btn btn-danger btn-sm" onclick="clearFirebaseConfig()" style="flex:1;padding:5px;cursor:pointer;">連携解除</button>
-                  </div>
-                  <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; margin-top: 4px;">
-                    <p style="font-size:11px;color:rgba(255,255,255,0.45);margin:0 0 6px 0;">開発環境等で登録したローカルデータを、この同期先DBに一括反映（デプロイ）します。</p>
-                    <button class="btn btn-primary btn-sm" onclick="deployDataToFirebase()" style="width:100%;cursor:pointer;padding:6px;font-size:11.5px;justify-content:center;background:#10b981;border-color:#10b981;font-weight:700;">
-                      <i data-lucide="upload-cloud"></i> ローカルデータをこのDBにデプロイ
+                  <div style="display:flex;gap:8px;margin-top:4px;">
+                    <button id="btn-sync-start" class="btn btn-sm" onclick="saveFirebaseConfig()" style="cursor:pointer;flex:1;padding:8px;font-size:12px;font-weight:600;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981;justify-content:center;">
+                      <i data-lucide="cloud-lightning"></i> 同期を開始する
+                    </button>
+                    <button class="btn btn-sm" onclick="clearFirebaseConfig()" style="cursor:pointer;padding:8px 16px;font-size:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);justify-content:center;">
+                      同期を解除する
                     </button>
                   </div>
                 </div>
@@ -464,11 +447,11 @@
                 <h2>データの初期化・一括クリア</h2>
               </div>
               <div class="card-body">
-                <p class="text-danger" style="font-size:11.5px;color:#f87171;margin-top:0;margin-bottom:12px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> 注意：削除されたデータは元に戻せません。同期中の場合はオンラインDB側のデータもクリアされます。</p>
+                <p class="text-danger" style="font-size:11.5px;color:#f87171;margin-top:0;margin-bottom:12px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> 注意：削除されたデータは元に戻せません。エクスポートされていない場合、完全に消去されます。</p>
                 <div class="settings-actions" style="display:flex;flex-wrap:wrap;gap:8px;">
-                  <button class="btn btn-danger btn-sm" id="btn-reset-app" style="cursor:pointer;padding:6px 12px;font-size:11.5px;flex:1 1 45%;justify-content:center;">
-                    <i data-lucide="rotate-ccw"></i> サンプルデータで初期化
-                  </button>
+                   <button class="btn btn-sm" id="btn-reset-app" style="cursor:pointer;padding:6px 12px;font-size:11.5px;flex:1 1 45%;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#818cf8;justify-content:center;">
+                     <i data-lucide="rotate-ccw"></i> サンプル見本データをロード
+                   </button>
                   <button class="btn btn-danger btn-sm" onclick="resetDataCategory('tasks')" style="cursor:pointer;padding:6px 12px;font-size:11.5px;flex:1 1 45%;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);justify-content:center;">
                     <i data-lucide="trash-2"></i> タスクを一括削除
                   </button>
@@ -485,18 +468,7 @@
               </div>
             </div>
 
-            <div class="card glass">
-              <div class="card-header">
-                <h2>ゲームプロデューサー専用ショートカット</h2>
-              </div>
-              <div class="card-body">
-                <p>各タイトルごとのマイルストーンタスクを簡単に追加・管理するためのクイックテンプレートです。</p>
-                <div class="settings-actions">
-                  <button class="btn btn-secondary" id="btn-quick-milestone-life">『LIFE』のマイルストーン追加</button>
-                  <button class="btn btn-secondary" id="btn-quick-milestone-ninpri">『NinPriR』のマイルストーン追加</button>
-                </div>
-              </div>
-            </div>
+
           </div>
         </section>
 
@@ -562,7 +534,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="task-duedate">期日</label>
+              <label for="task-duedate">実施予定日</label>
               <input type="date" id="task-duedate" class="input-text">
             </div>
           </div>
@@ -572,28 +544,33 @@
             <textarea id="task-desc" placeholder="タスクの詳細やメモ" class="input-textarea" rows="3"></textarea>
           </div>
 
-          <!-- 子タスク（サブタスク）管理セクション -->
+          <!-- タスク一覧セクション（マイルストーン編集時のみ表示） -->
           <div class="form-group" id="subtasks-section" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; margin-top: 12px;">
             <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span>子タスク (サブタスク)</span>
+              <span>タスク一覧</span>
               <span id="subtasks-count" style="font-size: 11px; color: var(--text-muted); font-weight: normal;">0件</span>
             </label>
             
             <div id="modal-subtask-list" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; padding-right: 4px;">
-              <!-- 子タスク一覧が動的に挿入される -->
+              <!-- タスク一覧が動的に挿入される -->
             </div>
 
             <div style="display: flex; gap: 6px;">
-              <input type="text" id="new-subtask-title" placeholder="新しい子タスクを追加..." class="input-text" style="font-size: 12px; height: 30px; flex-grow: 1;">
+              <input type="text" id="new-subtask-title" placeholder="新しいタスクを追加..." class="input-text" style="font-size: 12px; height: 30px; flex-grow: 1;">
               <button type="button" id="btn-add-subtask" class="btn btn-secondary" style="height: 30px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
                 追加
               </button>
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-close-modal">キャンセル</button>
-          <button type="submit" class="btn btn-primary">保存</button>
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+          <button type="button" id="btn-delete-task" onclick="deleteTask()" class="btn btn-danger" style="display:none; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; cursor:pointer; align-items:center; gap:6px; font-size:11.5px; padding:6px 12px; border-radius:6px;">
+            <i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:middle;"></i>タスクを削除
+          </button>
+          <div style="display:flex; gap:8px; margin-left: auto;">
+            <button type="button" class="btn btn-secondary btn-close-modal">キャンセル</button>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </div>
         </div>
       </form>
     </div>

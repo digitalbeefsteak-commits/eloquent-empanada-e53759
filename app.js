@@ -107,18 +107,34 @@ let appState = {
 };
 
 let expandedMilestones = new Set();
+let lastTasksState = null;
+
+function undoLastDelete() {
+  if (lastTasksState) {
+    appState.tasks = JSON.parse(JSON.stringify(lastTasksState));
+    lastTasksState = null;
+    saveData();
+    renderAll();
+    alert("直前のタスク削除を取り消しました。(Ctrl+Z)");
+  }
+}
 
 // ==========================================================================
 // INITIALIZATION
 // ==========================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadData();
-  setupUI();
-  setupEventListeners();
-  initFirebase();
-  renderAll();
-  startClock();
+  try {
+    loadData();
+    setupUI();
+    setupEventListeners();
+    initFirebase();
+    renderAll();
+    startClock();
+  } catch (err) {
+    alert("LifeOrbit 初期化エラー:\n" + err.message + "\n\nStack Trace:\n" + err.stack);
+    console.error("Initialization error:", err);
+  }
 });
 
 function loadData() {
@@ -161,6 +177,7 @@ function loadData() {
 }
 
 function saveData() {
+  appState.lastSyncTime = new Date().toISOString();
   localStorage.setItem("lifeorbit_data", JSON.stringify({
     goals: appState.goals,
     tasks: appState.tasks,
@@ -218,6 +235,15 @@ function formatDate(d) {
 
 function formatDateDisplay(str) {
   return str ? str.replace(/-/g, ".") : "";
+}
+
+function parseLocalDate(str) {
+  if (!str) return new Date();
+  const parts = str.split("-");
+  if (parts.length === 3) {
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  }
+  return new Date(str);
 }
 
 function parseTime(str) {
@@ -345,6 +371,18 @@ function renderDashboardGoals() {
     div.appendChild(header);
     div.appendChild(bar);
 
+    // 直近の未完了マイルストーンを常時表示
+    const nextMilestone = milestones.find(m => m.status !== "completed");
+    if (nextMilestone) {
+      const nextMsDiv = document.createElement("div");
+      nextMsDiv.style.cssText = "font-size:11px;color:rgba(255,255,255,0.4);margin-left:21px;margin-top:5px;display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+      nextMsDiv.innerHTML = `
+        <span style="color:${g.color || "#818cf8"};font-weight:700;font-family:monospace;flex-shrink:0;">直近MS: ${formatDateDisplay(nextMilestone.duedate)||"未定"}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,0.65);">${nextMilestone.title}</span>
+      `;
+      div.appendChild(nextMsDiv);
+    }
+
     // マイルストーン一覧（プログレスバーの真下・全幅）
     if (isOpen) {
       const msContainer = document.createElement("div");
@@ -428,7 +466,7 @@ function taskQuickBtns(taskId) {
 }
 
 function quickDeleteTask(taskId) {
-  if (!confirm("このタスクを削除しますか？")) return;
+  lastTasksState = JSON.parse(JSON.stringify(appState.tasks));
   appState.tasks = appState.tasks.filter(t => t.id !== taskId && t.parentTaskId !== taskId);
   saveData();
   renderAll();
@@ -439,8 +477,8 @@ function renderTodayTasks() {
   const el = document.getElementById("dashboard-todo-list");
   if (!el) return;
   el.innerHTML = "";
-  // タイムラインに配置済みのタスクは除外
-  const todayTasks = appState.tasks.filter(t => t.status === "today" && !t.assignedTimeSlot);
+  // タイムラインに配置済み、またはマイルストーンタスクは除外
+  const todayTasks = appState.tasks.filter(t => t.status === "today" && !t.isMilestone && !t.assignedTimeSlot);
   if (todayTasks.length === 0) {
     el.innerHTML = `<div style="color:rgba(255,255,255,0.3);font-size:12px;padding:16px 0;text-align:center;">今日やるタスクはありません</div>`;
     return;
@@ -739,6 +777,23 @@ function renderKanban() {
   Object.values(colMap).forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = ""; });
   const todayStr = formatDate(appState.currentDate);
   appState.tasks.forEach(task => {
+    // マイルストーンはカンバンに表示しない（目標ページで管理）
+    if (task.isMilestone) return;
+
+    // 目標フィルター
+    if (appState.kanbanFilterGoal !== "all") {
+      if (appState.kanbanFilterGoal === "none") {
+        if (task.goalId && task.goalId !== "none") return;
+      } else {
+        if (task.goalId !== appState.kanbanFilterGoal) return;
+      }
+    }
+
+    // 優先度フィルター
+    if (appState.kanbanFilterPriority !== "all") {
+      if (task.priority !== appState.kanbanFilterPriority) return;
+    }
+
     const colId = colMap[task.status];
     if (!colId) return;
     if (task.status === "completed") {
@@ -749,6 +804,17 @@ function renderKanban() {
     if (!col) return;
     const goal = appState.goals.find(g => g.id === task.goalId);
     const goalShort = goal ? (goal.shortName || goal.title.replace(/【.*?】/, "").trim().substring(0, 8)) : null;
+
+    // 期限切れ・警告のハイライト判定
+    const isOverdue = task.duedate && task.duedate < todayStr && task.status !== "completed";
+    const isWaitingOverdue = task.duedate && task.duedate < todayStr && task.status === "waiting";
+    const titleColor = isWaitingOverdue ? "rgba(251,191,36,0.9)" : (isOverdue ? "rgba(248,113,113,0.95)" : "");
+    const dueBadgeStyle = isOverdue
+      ? `font-size:10px;color:rgba(248,113,113,0.9);font-weight:700;`
+      : (isWaitingOverdue ? `font-size:10px;color:rgba(251,191,36,0.85);font-weight:600;` : `font-size:10px;color:rgba(255,255,255,0.4);`);
+    const overdueBadge = isOverdue ? `<span style="font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:rgba(239,68,68,0.2);color:rgba(248,113,113,1);border:1px solid rgba(239,68,68,0.35);">期限超</span>` : "";
+    const waitingBadge = task.status === "waiting" ? `<span style="font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:rgba(245,158,11,0.15);color:rgba(251,191,36,0.9);border:1px solid rgba(245,158,11,0.3);">対応待</span>` : "";
+
     const card = document.createElement("div");
     card.className = "kanban-card";
     card.draggable = true;
@@ -756,11 +822,19 @@ function renderKanban() {
     card.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", task.id); });
     card.addEventListener("click", () => openEditTaskModal(task.id));
     card.innerHTML = `
-      <div style="font-size:13px;font-weight:500;margin-bottom:6px;">${task.title}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="font-size:13px;font-weight:500;margin-bottom:6px;${titleColor ? `color:${titleColor};` : ""}">${task.title}</div>
+        <button title="削除" onclick="event.stopPropagation(); quickDeleteTask('${task.id}')"
+          style="background:transparent;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;display:inline-flex;align-items:center;justify-content:center;transition:color 0.15s;margin-top:-2px;margin-right:-4px;flex-shrink:0;"
+          onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(255,255,255,0.2)'">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4h6v2"></path></svg>
+        </button>
+      </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
         ${goalBadgeHTML(goal, goalShort)}
-        ${task.parentTaskId ? `<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);">↑子タスク</span>` : ""}
-        ${task.duedate ? `<span style="font-size:10px;color:rgba(255,255,255,0.4);">〆${formatDateDisplay(task.duedate)}</span>` : ""}
+        ${overdueBadge}${waitingBadge}
+        ${task.parentTaskId ? (() => { const ms = appState.tasks.find(t => t.id === task.parentTaskId); return ms ? `<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(168,85,247,0.08);color:rgba(168,85,247,0.7);border:1px solid rgba(168,85,247,0.2);">◆${ms.title.length > 10 ? ms.title.substring(0, 10) + '…' : ms.title}</span>` : ''; })() : ''}
+        ${task.duedate ? `<span style="${dueBadgeStyle}">〆${formatDateDisplay(task.duedate)}</span>` : ""}
       </div>
     `;
     col.appendChild(card);
@@ -1489,6 +1563,23 @@ function updateSyncDisplay() {
 
 function switchView(viewName) {
   appState.activeView = viewName;
+
+  // tasksビューがアクティブな場合はサブタイトルを非表示にする
+  const subEl = document.getElementById("view-subtitle");
+  if (subEl) {
+    if (viewName === "tasks") {
+      subEl.style.display = "none";
+    } else {
+      subEl.style.display = "block";
+    }
+  }
+
+  if (viewName === "goals") {
+    renderGoalsPage();
+  } else if (viewName === "tasks") {
+    renderKanban();
+  }
+
   // nav-item の active 切り替え
   document.querySelectorAll(".nav-item").forEach(btn => {
     if (btn.dataset.view === viewName) btn.classList.add("active");
@@ -1503,7 +1594,6 @@ function switchView(viewName) {
   const titles = { dashboard: "ダッシュボード", goals: "目標 (Goals)", tasks: "タスク (Tasks)", calendar: "カレンダー", review: "レビュー", settings: "設定・バックアップ" };
   const subs = { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "タスクのカンバン管理", calendar: "スケジュールとGaroon連携", review: "活動実績の振り返りと未完了タスクの棚卸し", settings: "データの管理とバックアップ" };
   const titleEl = document.getElementById("view-title");
-  const subEl = document.getElementById("view-subtitle");
   if (titleEl) titleEl.textContent = titles[viewName] || viewName;
   if (subEl) subEl.textContent = subs[viewName] || "";
 
@@ -1560,7 +1650,51 @@ function setupEventListeners() {
 
   // タスクボードの新規タスク
   const btnAddTaskBoard = document.getElementById("btn-add-task-board");
-  if (btnAddTaskBoard) btnAddTaskBoard.addEventListener("click", () => openAddTaskModal("none"));
+  if (btnAddTaskBoard) {
+    btnAddTaskBoard.addEventListener("click", () => {
+      const currentGoal = (appState.kanbanFilterGoal !== "all" && appState.kanbanFilterGoal !== "none") 
+        ? appState.kanbanFilterGoal 
+        : "none";
+      openAddTaskModal(currentGoal);
+    });
+  }
+
+  // 今日の予定に配置したタスクをドラッグしてタスクの箱に戻す
+  const todoListEl = document.getElementById("dashboard-todo-list");
+  if (todoListEl) {
+    todoListEl.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      todoListEl.style.background = "rgba(255,255,255,0.03)";
+    });
+    todoListEl.addEventListener("dragleave", () => {
+      todoListEl.style.background = "";
+    });
+    todoListEl.addEventListener("drop", e => {
+      e.preventDefault();
+      todoListEl.style.background = "";
+      const taskId = e.dataTransfer.getData("text/plain");
+      if (!taskId) return;
+      const task = appState.tasks.find(t => t.id === taskId);
+      if (task) {
+        task.assignedTimeSlot = null;
+        saveData();
+        renderAll();
+      }
+    });
+  }
+
+  // Ctrl + Z のキーボードイベントバインド
+  document.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+      const active = document.activeElement;
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+        return;
+      }
+      e.preventDefault();
+      undoLastDelete();
+    }
+  });
 
   // タスクフォーム
   const taskForm = document.getElementById("task-form");
@@ -2038,9 +2172,10 @@ function renderReviewPage() {
 
     if (filteredPendings.length === 0) {
       pendingContainer.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:240px;gap:8px;">
-          <i data-lucide="sparkles" style="width:36px;height:36px;color:var(--color-life);opacity:0.8;"></i>
-          <span style="font-size:12px;color:rgba(255,255,255,0.5);">この期間の未完了タスクはありません！素晴らしい！</span>
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;gap:6px;margin-top:10px;">
+          <i data-lucide="sparkles" style="width:32px;height:32px;color:#a5b4fc;opacity:0.8;"></i>
+          <span style="font-size:12.5px;color:rgba(255,255,255,0.65);font-weight:600;">この期間の未完了タスクはありません！</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.35);">素晴らしい！すべてのタスクが完了しています。</span>
         </div>
       `;
       if (window.lucide) window.lucide.createIcons();
@@ -2068,10 +2203,10 @@ function renderReviewPage() {
             ${t.desc ? `<span style="font-size:10px;color:rgba(255,255,255,0.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.desc}</span>` : ""}
           </div>
           <div style="display:flex;gap:4px;flex-shrink:0;">
-            <button title="先送り" onclick="moveReviewTask('${t.id}')"
-              style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.5);padding:0;transition:all 0.15s;"
+            <button title="先送り" onclick="postponeReviewTask('${t.id}')"
+              style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.5);padding:0;transition:all 0.15s;font-size:10px;font-weight:bold;"
               onmouseover="this.style.background='rgba(99,102,241,0.25)';this.style.color='#818cf8';" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)';">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+              ▶
             </button>
             <button title="削除" onclick="deleteReviewTask('${t.id}')"
               style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.5);padding:0;transition:all 0.15s;"
@@ -2093,24 +2228,34 @@ function changeReviewMode(mode) {
   renderReviewPage();
 }
 
-// 個別先送り
-function moveReviewTask(taskId) {
+// 個別先送り (デイリーは翌日、ウィークリーは翌週月曜日にし、ステータスもそれに合わせて変更)
+function postponeReviewTask(taskId) {
   const task = appState.tasks.find(t => t.id === taskId);
   if (!task) return;
 
-  // ダッシュボードの「今週に先送り」と同一の仕様
-  task.status = "this_week";
-  task.duedate = ""; // 期限をクリア
+  const cur = parseLocalDate(appState.currentDate);
+  if (appState.reviewMode === "daily") {
+    const tomorrow = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1);
+    task.duedate = formatDate(tomorrow);
+    task.status = "this_week";
+  } else {
+    const day = cur.getDay(); // 0:日, 1:月, ...
+    const diffToMonday = cur.getDate() - day + (day === 0 ? -6 : 1); // 今週月曜日
+    const nextMonday = new Date(cur.getFullYear(), cur.getMonth(), diffToMonday + 7);
+    task.duedate = formatDate(nextMonday);
+    task.status = "next_week_and_later";
+  }
   
   saveData();
-  renderReviewPage();
+  renderAll();
 }
 
-// 個別削除
+// 個別削除 (confirm無し・Ctrl+Z退避)
 function deleteReviewTask(taskId) {
+  lastTasksState = JSON.parse(JSON.stringify(appState.tasks));
   appState.tasks = appState.tasks.filter(t => t.id !== taskId);
   saveData();
-  renderReviewPage();
+  renderAll();
 }
 
 // 一括先送り
@@ -2118,10 +2263,10 @@ function bulkMoveReviewTasks() {
   const endStr = appState.reviewMode === "daily" 
     ? formatDate(appState.currentDate) 
     : (() => {
-        const cur = new Date(appState.currentDate);
+        const cur = parseLocalDate(appState.currentDate);
         const day = cur.getDay();
         const diff = cur.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(cur.setDate(diff));
+        const monday = new Date(cur.getFullYear(), cur.getMonth(), diff);
         const sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
         return formatDate(sunday);
@@ -2134,26 +2279,46 @@ function bulkMoveReviewTasks() {
   });
 
   if (targetTasks.length === 0) return;
-  if (!confirm(`${targetTasks.length}件のタスクをすべて先送りしますか？`)) return;
+
+  const cur = parseLocalDate(appState.currentDate);
+  let newDuedateStr = "";
+  let newStatus = "";
+  let confirmMsg = "";
+
+  if (appState.reviewMode === "daily") {
+    const tomorrow = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1);
+    newDuedateStr = formatDate(tomorrow);
+    newStatus = "this_week";
+    confirmMsg = `${targetTasks.length}件のタスクをすべて翌日に先送りしますか？`;
+  } else {
+    const day = cur.getDay();
+    const diffToMonday = cur.getDate() - day + (day === 0 ? -6 : 1);
+    const nextMonday = new Date(cur.getFullYear(), cur.getMonth(), diffToMonday + 7);
+    newDuedateStr = formatDate(nextMonday);
+    newStatus = "next_week_and_later";
+    confirmMsg = `${targetTasks.length}件のタスクをすべて翌週月曜日に先送りしますか？`;
+  }
+
+  if (!confirm(confirmMsg)) return;
 
   targetTasks.forEach(t => {
-    t.status = "this_week";
-    t.duedate = "";
+    t.status = newStatus;
+    t.duedate = newDuedateStr;
   });
 
   saveData();
-  renderReviewPage();
+  renderAll();
 }
 
-// 一括削除
+// 一括削除 (confirm無し・Ctrl+Z退避)
 function bulkDeleteReviewTasks() {
   const endStr = appState.reviewMode === "daily" 
     ? formatDate(appState.currentDate) 
     : (() => {
-        const cur = new Date(appState.currentDate);
+        const cur = parseLocalDate(appState.currentDate);
         const day = cur.getDay();
         const diff = cur.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(cur.setDate(diff));
+        const monday = new Date(cur.getFullYear(), cur.getMonth(), diff);
         const sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
         return formatDate(sunday);
@@ -2166,13 +2331,13 @@ function bulkDeleteReviewTasks() {
   });
 
   if (targetTasks.length === 0) return;
-  if (!confirm(`${targetTasks.length}件のタスクをすべて削除します。よろしいですか？`)) return;
 
+  lastTasksState = JSON.parse(JSON.stringify(appState.tasks));
   const targetIds = new Set(targetTasks.map(t => t.id));
   appState.tasks = appState.tasks.filter(t => !targetIds.has(t.id));
 
   saveData();
-  renderReviewPage();
+  renderAll();
 }
 
 
@@ -2188,26 +2353,24 @@ window.deleteTask = deleteTask;
 // FIREBASE SYNC & AUTH LOGIC
 // ==========================================================================
 let isFirebaseInitialized = false;
-let firebaseUser = null;
 
 function initFirebase() {
   const configRaw = localStorage.getItem("firebase_config");
-  const loggedOutArea = document.getElementById("firebase-logged-out");
-  const loggedInArea = document.getElementById("firebase-logged-in");
-  const authSection = document.getElementById("fb-auth-section");
+  const syncKey = localStorage.getItem("firebase_sync_key");
   const configTextarea = document.getElementById("fb-config-json");
+  const syncKeyInput = document.getElementById("fb-sync-key");
 
-  if (!configRaw) {
-    if (loggedOutArea) loggedOutArea.style.display = "flex";
-    if (loggedInArea) loggedInArea.style.display = "none";
-    if (authSection) authSection.style.display = "none";
+  if (!configRaw || !syncKey) {
     updateHeaderSyncStatus(false);
     return;
   }
 
-  // テキストエリアに既存のConfigを表示しておく
+  // 設定フォームへ復元
   if (configTextarea && !configTextarea.value) {
     configTextarea.value = configRaw;
+  }
+  if (syncKeyInput && !syncKeyInput.value) {
+    syncKeyInput.value = syncKey;
   }
 
   try {
@@ -2217,27 +2380,8 @@ function initFirebase() {
       isFirebaseInitialized = true;
     }
 
-    if (authSection) authSection.style.display = "flex";
-
-    // 認証監視
-    firebase.auth().onAuthStateChanged((user) => {
-      firebaseUser = user;
-      const userEmailEl = document.getElementById("fb-user-email");
-      
-      if (user) {
-        if (loggedOutArea) loggedOutArea.style.display = "none";
-        if (loggedInArea) loggedInArea.style.display = "flex";
-        if (userEmailEl) userEmailEl.textContent = user.email;
-        
-        updateHeaderSyncStatus(true);
-        loadFirebaseData(user.uid);
-      } else {
-        if (loggedOutArea) loggedOutArea.style.display = "flex";
-        if (loggedInArea) loggedInArea.style.display = "none";
-        updateHeaderSyncStatus(false);
-      }
-    });
-
+    updateHeaderSyncStatus(true);
+    loadFirebaseData(syncKey);
   } catch (e) {
     console.error("Firebase Initialization Error:", e);
     alert("Firebase設定のパースに失敗しました。正しいJSON形式か確認してください。");
@@ -2249,104 +2393,92 @@ function initFirebase() {
 function updateHeaderSyncStatus(isCloud) {
   const badge = document.getElementById("header-sync-status-badge");
   const header = document.querySelector(".main-header");
-  if (!badge || !header) return;
+  
+  const statusText = document.getElementById("sync-status-text");
+  const btnStart = document.getElementById("btn-sync-start");
+  const configTextarea = document.getElementById("fb-config-json");
+  const syncKeyInput = document.getElementById("fb-sync-key");
 
   if (isCloud) {
-    badge.innerHTML = `<span class="badge" style="background:rgba(16,185,129,0.1);color:#10b981;font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(16,185,129,0.2);"><i data-lucide="cloud" style="width:10.5px;height:10.5px;"></i>クラウド同期中</span>`;
-    header.style.background = "transparent";
-    header.style.borderBottom = "1px solid var(--border-glass)";
+    if (badge) badge.innerHTML = `<span class="badge" style="background:rgba(16,185,129,0.1);color:#10b981;font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(16,185,129,0.2);"><i data-lucide="cloud" style="width:10.5px;height:10.5px;"></i>クラウド同期中</span>`;
+    if (header) {
+      header.style.background = "transparent";
+      header.style.borderBottom = "1px solid var(--border-glass)";
+    }
+    
+    if (statusText) {
+      const currentKey = localStorage.getItem("firebase_sync_key") || "";
+      statusText.innerHTML = `<span style="color:#10b981;font-weight:700;">● クラウド同期中</span> (合言葉: <span style="font-family:monospace;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">${currentKey}</span>)`;
+    }
+    if (configTextarea) configTextarea.disabled = true;
+    if (syncKeyInput) syncKeyInput.disabled = true;
+    if (btnStart) {
+      btnStart.disabled = true;
+      btnStart.innerHTML = `<i data-lucide="check"></i> 接続済み`;
+      btnStart.style.opacity = "0.5";
+      btnStart.style.cursor = "default";
+    }
   } else {
-    // ローカル版のスタイル（ヘッダー全体をかすかにアンバー警告色に）
-    badge.innerHTML = `<span class="badge" style="background:rgba(245,158,11,0.1);color:#f59e0b;font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(245,158,11,0.25);"><i data-lucide="alert-triangle" style="width:10.5px;height:10.5px;"></i>ローカル保存中</span>`;
-    header.style.background = "linear-gradient(to right, rgba(245,158,11,0.06), transparent)";
-    header.style.borderBottom = "1px solid rgba(245,158,11,0.22)";
+    if (badge) badge.innerHTML = `<span class="badge" style="background:rgba(245,158,11,0.1);color:#f59e0b;font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(245,158,11,0.25);"><i data-lucide="alert-triangle" style="width:10.5px;height:10.5px;"></i>ローカル保存中</span>`;
+    if (header) {
+      header.style.background = "linear-gradient(to right, rgba(245,158,11,0.06), transparent)";
+      header.style.borderBottom = "1px solid rgba(245,158,11,0.22)";
+    }
+
+    if (statusText) {
+      statusText.innerHTML = `<span style="color:#f59e0b;font-weight:700;">● 未同期 (ローカル保存モード)</span>`;
+    }
+    if (configTextarea) configTextarea.disabled = false;
+    if (syncKeyInput) syncKeyInput.disabled = false;
+    if (btnStart) {
+      btnStart.disabled = false;
+      btnStart.innerHTML = `<i data-lucide="cloud-lightning"></i> 同期を開始する`;
+      btnStart.style.opacity = "";
+      btnStart.style.cursor = "pointer";
+    }
   }
   if (window.lucide) window.lucide.createIcons();
 }
 
-// Config保存
+// Configおよび合言葉保存
 function saveFirebaseConfig() {
   const json = document.getElementById("fb-config-json").value.trim();
-  if (!json) return;
+  const syncKey = document.getElementById("fb-sync-key").value.trim();
+  if (!json || !syncKey) {
+    alert("Firebase Config JSON と 端末同期用の合言葉 の両方を入力してください。");
+    return;
+  }
   try {
     JSON.parse(json);
     localStorage.setItem("firebase_config", json);
-    alert("Firebase設定を保存しました。");
+    localStorage.setItem("firebase_sync_key", syncKey);
+    alert("同期設定を保存しました。画面を再起動して同期を開始します。");
     window.location.reload();
   } catch (e) {
     alert("無効なJSON形式です。FirebaseコンソールからコピーしたConfigオブジェクトを指定してください。");
   }
 }
 
-// Config解除
+// Configおよび合言葉解除
 function clearFirebaseConfig() {
   if (confirm("Firebaseの連携設定を削除し、ローカルモードに戻りますか？（登録データは消えません）")) {
     localStorage.removeItem("firebase_config");
+    localStorage.removeItem("firebase_sync_key");
     window.location.reload();
   }
 }
 
-// 新規ユーザー登録
-function firebaseSignUp() {
-  const email = document.getElementById("fb-email").value.trim();
-  const password = document.getElementById("fb-password").value.trim();
-  if (!email || !password) { alert("メールアドレスとパスワードを入力してください。"); return; }
-
-  firebase.auth().createUserWithEmailAndPassword(email, password)
-    .then((userCredential) => {
-      alert("新規登録＆ログインに成功しました！初期データをオンラインにアップロードします。");
-      // 初回登録時はローカルのデータをFirestoreにアップロードする
-      syncDataToFirebase();
-    })
-    .catch((error) => {
-      alert("登録エラー: " + error.message);
-    });
-}
-
-// ログイン
-function firebaseLogin() {
-  const email = document.getElementById("fb-email").value.trim();
-  const password = document.getElementById("fb-password").value.trim();
-  if (!email || !password) { alert("メールアドレスとパスワードを入力してください。"); return; }
-
-  firebase.auth().signInWithEmailAndPassword(email, password)
-    .then((userCredential) => {
-      alert("ログインしました。オンラインデータを同期します。");
-    })
-    .catch((error) => {
-      alert("ログインエラー: " + error.message);
-    });
-}
-
 let firestoreUnsubscribe = null;
 
-// ログアウト
-function firebaseLogout() {
-  if (confirm("ログアウトしますか？（ローカルのデータはそのまま残ります）")) {
-    if (firestoreUnsubscribe) {
-      firestoreUnsubscribe();
-      firestoreUnsubscribe = null;
-    }
-    firebase.auth().signOut()
-      .then(() => {
-        alert("ログアウトしました。ローカルデータモードで動作します。");
-        window.location.reload();
-      });
-  }
-}
-
-// Firestoreからリアルタイムにデータを購読(監視)して同期
-function loadFirebaseData(uid) {
+// Firestoreから合言葉ドキュメントをリアルタイムに購読
+function loadFirebaseData(syncKey) {
   if (firestoreUnsubscribe) {
     firestoreUnsubscribe();
   }
 
-  firestoreUnsubscribe = firebase.firestore().collection("users").doc(uid).onSnapshot((doc) => {
+  firestoreUnsubscribe = firebase.firestore().collection("orbits").doc(syncKey).onSnapshot((doc) => {
     if (doc.exists) {
       const data = doc.data();
-      
-      // 無限ループ（自分が保存したデータを自分で再度読み込んで描画する）を防ぐため、
-      // 最終更新時間が同一であれば上書きをスキップする
       const localRaw = localStorage.getItem("lifeorbit_data");
       let shouldUpdate = true;
       if (localRaw) {
@@ -2364,14 +2496,12 @@ function loadFirebaseData(uid) {
         appState.schedules = data.schedules || [];
         appState.lastSyncTime = data.lastSyncTime || null;
         
-        // ローカルキャッシュにも上書き保存
         localStorage.setItem("lifeorbit_data", JSON.stringify(data));
-        
         renderAll();
         console.log("Firestore data synchronized in real-time.");
       }
     } else {
-      console.log("Firestoreにデータがありません。現在のローカルデータをアップロードします。");
+      console.log("Firestoreにデータがありません。現在のローカルデータを同期先にアップロードします。");
       syncDataToFirebase();
     }
   }, (error) => {
@@ -2381,13 +2511,15 @@ function loadFirebaseData(uid) {
 
 // データをFirestoreに同期（プッシュ）
 function syncDataToFirebase() {
-  if (!isFirebaseInitialized || !firebaseUser) return;
+  if (!isFirebaseInitialized) return;
+  const syncKey = localStorage.getItem("firebase_sync_key");
+  if (!syncKey) return;
 
-  firebase.firestore().collection("users").doc(firebaseUser.uid).set({
+  firebase.firestore().collection("orbits").doc(syncKey).set({
     goals: appState.goals,
     tasks: appState.tasks,
     schedules: appState.schedules,
-    lastSyncTime: new Date().toISOString()
+    lastSyncTime: appState.lastSyncTime
   })
   .then(() => {
     console.log("Firestore data updated.");
@@ -2397,17 +2529,21 @@ function syncDataToFirebase() {
   });
 }
 
-// 現在のローカルデータを、ログイン中のFirebaseへ上書きデプロイ(アップロード)する
+// 現在のローカルデータを、合言葉の同期ドキュメントへ上書きデプロイ(アップロード)する
 function deployDataToFirebase() {
-  if (!isFirebaseInitialized || !firebaseUser) {
-    alert("Firebaseにログインしていません。設定画面のフォームからログインを行ってから実行してください。");
+  if (!isFirebaseInitialized) {
+    alert("Firebaseが有効になっていません。Configを入力して同期を開始してください。");
+    return;
+  }
+  const syncKey = localStorage.getItem("firebase_sync_key");
+  if (!syncKey) {
+    alert("同期用の合言葉が設定されていません。");
     return;
   }
 
-  if (confirm("【警告】現在画面上に表示されているローカルのデータ（目標・タスク・スケジュール）で、このオンラインデータベース側を完全に上書きデプロイします。よろしいですか？")) {
+  if (confirm("【警告】現在画面上に表示されているローカルのデータ（目標・タスク・スケジュール）で、この合言葉のオンラインデータベースを完全に上書きデプロイします。よろしいですか？")) {
     appState.lastSyncTime = new Date().toISOString();
     
-    // リアルタイムリスナーによる書き戻しを予防するため、ローカル側のキャッシュタイムスタンプも即同期
     localStorage.setItem("lifeorbit_data", JSON.stringify({
       goals: appState.goals,
       tasks: appState.tasks,
@@ -2415,8 +2551,7 @@ function deployDataToFirebase() {
       lastSyncTime: appState.lastSyncTime
     }));
 
-    // クラウド側へ一括プッシュ
-    firebase.firestore().collection("users").doc(firebaseUser.uid).set({
+    firebase.firestore().collection("orbits").doc(syncKey).set({
       goals: appState.goals,
       tasks: appState.tasks,
       schedules: appState.schedules,
@@ -2485,6 +2620,7 @@ window.deleteChildTask = deleteChildTask;
 window.resetToDefault = resetToDefault;
 window.dragStartTask = dragStartTask;
 window.quickDeleteTask = quickDeleteTask;
+window.undoLastDelete = undoLastDelete;
 window.toggleDashboardGoal = toggleDashboardGoal;
 window.openAddGoalModal = openAddGoalModal;
 window.openEditGoalModal = openEditGoalModal;
@@ -2495,16 +2631,13 @@ window.deleteModalMilestone = deleteModalMilestone;
 window.deleteGoal = deleteGoal;
 window.renderReviewPage = renderReviewPage;
 window.changeReviewMode = changeReviewMode;
-window.moveReviewTask = moveReviewTask;
+window.postponeReviewTask = postponeReviewTask;
 window.deleteReviewTask = deleteReviewTask;
 window.bulkMoveReviewTasks = bulkMoveReviewTasks;
 window.bulkDeleteReviewTasks = bulkDeleteReviewTasks;
 window.initFirebase = initFirebase;
 window.saveFirebaseConfig = saveFirebaseConfig;
 window.clearFirebaseConfig = clearFirebaseConfig;
-window.firebaseLogin = firebaseLogin;
-window.firebaseSignUp = firebaseSignUp;
-window.firebaseLogout = firebaseLogout;
 window.syncDataToFirebase = syncDataToFirebase;
 window.resetDataCategory = resetDataCategory;
 window.updateHeaderSyncStatus = updateHeaderSyncStatus;
