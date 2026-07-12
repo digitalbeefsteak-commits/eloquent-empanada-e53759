@@ -174,6 +174,24 @@ function parseTime(str) {
   return h * 60 + m;
 }
 
+// タスクソート：重要度(優先度)順 (高➔中➔低) ➔ 期限日順 (昇順、未設定は後)
+function sortTasks(tasks) {
+  const priorityWeight = { "high": 3, "medium": 2, "low": 1 };
+  return [...tasks].sort((a, b) => {
+    const pA = priorityWeight[a.priority] || 2;
+    const pB = priorityWeight[b.priority] || 2;
+    if (pA !== pB) {
+      return pB - pA;
+    }
+    const dA = a.duedate || "9999-99-99";
+    const dB = b.duedate || "9999-99-99";
+    if (dA !== dB) {
+      return dA.localeCompare(dB);
+    }
+    return (a.title || "").localeCompare(b.title || "");
+  });
+}
+
 // ==========================================================================
 // ICS PARSER
 // ==========================================================================
@@ -400,8 +418,8 @@ function renderTodayTasks() {
   const el = document.getElementById("dashboard-todo-list");
   if (!el) return;
   el.innerHTML = "";
-  // タイムラインに配置済み、またはマイルストーンタスクは除外
-  const todayTasks = appState.tasks.filter(t => t.status === "today" && !t.isMilestone && !t.assignedTimeSlot);
+  // タイムラインに配置済み、またはマイルストーンタスクは除外、さらに重要度＋日付ソート
+  const todayTasks = sortTasks(appState.tasks.filter(t => t.status === "today" && !t.isMilestone && !t.assignedTimeSlot));
   if (todayTasks.length === 0) {
     el.innerHTML = `<div style="color:rgba(255,255,255,0.3);font-size:12px;padding:16px 0;text-align:center;">今日やるタスクはありません</div>`;
     return;
@@ -416,11 +434,32 @@ function renderTodayTasks() {
     li.className = "todo-item";
     li.draggable = true;
     li.dataset.taskId = task.id;
-    li.style.cssText = "display:flex;align-items:center;gap:7px;padding:5px 4px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:grab;user-select:none;";
+
+    // ダッシュボードでも重要度(優先度)に応じた不透明度・枠線・背景調整を反映
+    let opacityVal = 1.0;
+    let bgStyle = "";
+    let borderStyle = "border-bottom:1px solid rgba(255,255,255,0.04);";
+    if (!isOverdue) {
+      if (task.priority === "high") {
+        opacityVal = 1.0;
+        bgStyle = "background: rgba(255, 255, 255, 0.04);";
+        borderStyle = "border-bottom:1px solid rgba(255,255,255,0.12);";
+      } else if (task.priority === "low") {
+        opacityVal = 0.6;
+        bgStyle = "background: rgba(255, 255, 255, 0.01);";
+      } else {
+        opacityVal = 0.82;
+        bgStyle = "background: rgba(255, 255, 255, 0.02);";
+      }
+    } else {
+      bgStyle = "background: rgba(239, 68, 68, 0.04);"; // 期限切れ時はうっすら赤背景で警告
+    }
+
+    li.style.cssText = `display:flex;align-items:center;gap:7px;padding:5px 4px;${borderStyle}cursor:grab;user-select:none;opacity:${opacityVal};${bgStyle}`;
 
     let dateStyle = "background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);";
     if (isOverdue) {
-      dateStyle = "background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:rgba(248,113,113,0.9);font-weight:700;";
+      dateStyle = "background:rgba(239, 68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:rgba(248,113,113,0.9);font-weight:700;";
     }
 
     li.innerHTML = `
@@ -728,7 +767,8 @@ function renderKanban() {
   };
   Object.values(colMap).forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = ""; });
   const todayStr = formatDate(appState.currentDate);
-  appState.tasks.forEach(task => {
+  // 重要度順 (高➔中➔低) ➔ 期限日順でソートして描画
+  sortTasks(appState.tasks).forEach(task => {
     // マイルストーンはカンバンに表示しない（目標ページで管理）
     if (task.isMilestone) return;
 
@@ -1019,17 +1059,65 @@ function renderWeekView() {
       col.appendChild(slotBg);
     }
 
-    // その日のスケジュール
-    const dayScheds = appState.schedules.filter(s => s.startDate === dateStr);
+    // その日のスケジュール（非終日）
+    const dayScheds = appState.schedules.filter(s => s.startDate === dateStr && !s.allday);
+    
+    // 1. 開始時刻と終了時刻をあらかじめ数値(分単位)にパースしてソート
     dayScheds.forEach(s => {
-      if (s.allday) return; 
-      
-      const startMin = parseTime(s.startTime);
-      const endMin = parseTime(s.endTime);
-      const duration = endMin - startMin;
+      s._startMin = parseTime(s.startTime);
+      s._endMin = parseTime(s.endTime);
+    });
+    dayScheds.sort((a, b) => a._startMin - b._startMin);
 
-      const topPx = (startMin / 60) * 60; 
+    // 2. 重複（衝突）する予定をグループ化
+    const groups = [];
+    dayScheds.forEach(s => {
+      let placed = false;
+      for (const group of groups) {
+        const overlaps = group.some(other => s._startMin < other._endMin && s._endMin > other._startMin);
+        if (overlaps) {
+          group.push(s);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        groups.push([s]);
+      }
+    });
+
+    // 3. 各グループ内でカラム（列）を順番に割り当てる (Googleカレンダー風配置)
+    groups.forEach(group => {
+      const columns = [];
+      group.forEach(s => {
+        let colIndex = 0;
+        while (true) {
+          if (!columns[colIndex]) {
+            columns[colIndex] = [];
+          }
+          const hasOverlap = columns[colIndex].some(other => s._startMin < other._endMin && s._endMin > other._startMin);
+          if (!hasOverlap) {
+            columns[colIndex].push(s);
+            s._colIndex = colIndex;
+            break;
+          }
+          colIndex++;
+        }
+      });
+      const totalCols = columns.length;
+      group.forEach(s => {
+        s._totalCols = totalCols;
+      });
+    });
+
+    // 4. 重複幅を考慮してHTML要素を配置
+    dayScheds.forEach(s => {
+      const duration = s._endMin - s._startMin;
+      const topPx = (s._startMin / 60) * 60; 
       const heightPx = (duration / 60) * 60;
+
+      const colWidthPercent = 100 / s._totalCols;
+      const leftPercent = s._colIndex * colWidthPercent;
 
       const eventEl = document.createElement("div");
       const bg = s.isExternal ? "rgba(168,85,247,0.22)" : "rgba(59,130,246,0.22)";
@@ -1039,8 +1127,8 @@ function renderWeekView() {
       eventEl.style.cssText = `
         position:absolute;
         top:${topPx}px;
-        left:2px;
-        right:2px;
+        left:calc(${leftPercent}% + 1px);
+        width:calc(${colWidthPercent}% - 2px);
         height:${Math.max(20, heightPx - 2)}px;
         background:${bg};
         border:${border};
