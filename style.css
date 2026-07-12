@@ -1799,6 +1799,10 @@ label {
     overflow-x: hidden; /* 水平スクロールを完全に排除 */
   }
 
+  .view-content {
+    padding: 4px 2px !important; /* PC版のpadding:40pxをスマホ幅用に極小化 */
+  }
+
   .main-header {
     padding-bottom: 6px;
     margin-bottom: 8px;
