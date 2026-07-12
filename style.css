@@ -1804,7 +1804,8 @@ label {
   }
 
   .main-header {
-    padding-bottom: 6px;
+    padding: 0 8px !important; /* 左右の余白40pxを8pxに極小化 */
+    padding-bottom: 6px !important;
     margin-bottom: 8px;
   }
 
