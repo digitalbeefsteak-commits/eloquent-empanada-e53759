@@ -198,7 +198,7 @@ function parseICS(text) {
     const allday = (e.dtstart || "").length <= 8;
     return {
       id: "sch-g-" + Math.random().toString(36).substr(2, 9),
-      title: "【インポート】" + (e.title || "予定"),
+      title: e.title || "予定",
       startDate: formatDate(start),
       startTime: allday ? "00:00" : start.toTimeString().substring(0,5),
       endDate: formatDate(end),
