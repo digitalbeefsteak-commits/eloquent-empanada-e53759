@@ -1021,21 +1021,21 @@ function renderWeekView() {
     header.appendChild(dayCell);
   }
 
-  // 3. 24時間の時間軸ラベルの描画
+  // 3. 24時間の時間軸ラベルの描画 (グリッド線と一致させるため、各マスの「上端」を基準に配置)
   for (let h = 0; h < 24; h++) {
     const timeLabel = document.createElement("div");
     timeLabel.className = "time-axis-hour";
     timeLabel.style.cssText = `
       height: 60px;
       display: flex;
-      align-items: flex-end;
+      align-items: flex-start;
       justify-content: flex-end;
       padding-right: 12px;
-      padding-bottom: 0;
+      padding-top: 0;
       box-sizing: border-box;
       font-size: 10px;
       color: rgba(255, 255, 255, 0.45);
-      transform: translateY(5px);
+      transform: translateY(-7px);
       flex-shrink: 0;
     `;
     if (h === 0) {
