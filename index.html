@@ -412,33 +412,70 @@
 
             <div class="card glass">
               <div class="card-header">
-                <h2>☁️ 端末間クラウド同期（合言葉モード）</h2>
+                <h2>☁️ 端末間クラウド同期（合言葉で繋がる！）</h2>
               </div>
               <div class="card-body">
                 <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:0;line-height:1.4;">
-                  Firebase Configと任意の「合言葉（同期キー）」を設定するだけで、別のパソコンやスマホとデータを自動で同期・共有できます。<br>
-                  <strong style="color:var(--accent);">※ログインアカウント登録は不要です。同じ合言葉を設定した端末同士が同期されます。</strong>
+                  「合言葉」を共有するだけで、別のパソコンやスマホとデータを自動で同期・共有できます。<br>
+                  <strong style="color:var(--accent);">※同じ合言葉を設定した端末同士でデータが同期されます。</strong>
                 </p>
                 <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
                   <div id="sync-status-text" style="font-size:12px;color:rgba(255,255,255,0.75);padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.06);line-height:1.4;">
-                    ● 未同期 (ローカル保存モード)
+                    ● 読み込み中...
                   </div>
-                  <div>
-                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px;font-weight:600;">1. Firebase Config JSON</label>
-                    <textarea id="fb-config-json" placeholder='{ "apiKey": "...", "authDomain": "...", ... }' style="width:100%;height:80px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;color:#fff;font-family:monospace;font-size:11px;box-sizing:border-box;resize:vertical;"></textarea>
+                  
+                  <!-- この端末の同期キー表示 -->
+                  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:12px;">
+                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600;">この端末の同期コード（合言葉）</label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <input type="text" id="my-sync-code" readonly style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:8px;color:#10b981;font-family:monospace;font-weight:bold;font-size:13px;text-align:center;" value="読み込み中...">
+                      <button class="btn btn-sm" onclick="copySyncKey()" style="padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;color:#fff;display:inline-flex;align-items:center;gap:4px;border-radius:4px;">
+                        <i data-lucide="copy" style="width:13.5px;height:13.5px;"></i>コピー
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px;font-weight:600;">2. 端末同期用の「合言葉」（他人に推測されにくい英数字）</label>
-                    <input type="text" id="fb-sync-key" placeholder="例: my-private-orbit-2026" style="width:100%;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#fff;font-size:12px;box-sizing:border-box;">
+
+                  <!-- 別の端末から引き継ぐ -->
+                  <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:6px;padding:12px;">
+                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600;">別の端末からデータを引き継ぐ（インポート）</label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <input type="text" id="import-sync-code-input" placeholder="例: orbit-xxxx-xxxx" style="flex:1;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:8px;color:#fff;font-size:12px;">
+                      <button class="btn btn-sm" onclick="importSyncData()" style="padding:8px 12px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);cursor:pointer;color:#10b981;font-weight:600;display:inline-flex;align-items:center;gap:4px;border-radius:4px;">
+                        <i data-lucide="download-cloud" style="width:13.5px;height:13.5px;"></i>引き継ぐ
+                      </button>
+                    </div>
+                    <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:6px 0 0 0;line-height:1.3;">
+                      ※引き継ぐと、この端末の現在のデータは上書きされ、入力したコードの端末のデータと同期されます。
+                    </p>
                   </div>
-                  <div style="display:flex;gap:8px;margin-top:4px;">
-                    <button id="btn-sync-start" class="btn btn-sm" onclick="saveFirebaseConfig()" style="cursor:pointer;flex:1;padding:8px;font-size:12px;font-weight:600;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981;justify-content:center;">
-                      <i data-lucide="cloud-lightning"></i> 同期を開始する
+
+                  <!-- 同期解除ボタン -->
+                  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+                    <button class="btn btn-sm" onclick="disconnectSync()" style="cursor:pointer;padding:6px 12px;font-size:11px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;justify-content:center;border-radius:4px;display:inline-flex;align-items:center;gap:4px;">
+                      <i data-lucide="log-out" style="width:11.5px;height:11.5px;"></i> 同期を解除する
                     </button>
-                    <button class="btn btn-sm" onclick="clearFirebaseConfig()" style="cursor:pointer;padding:8px 16px;font-size:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);justify-content:center;">
-                      同期を解除する
-                    </button>
                   </div>
+
+                  <!-- 詳細設定（カスタムFirebase Config） -->
+                  <details style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">
+                    <summary style="font-size:11px;color:rgba(255,255,255,0.4);cursor:pointer;user-select:none;margin-bottom:8px;">
+                      ⚙️ 詳細設定（開発者向け・カスタムFirebase Config）
+                    </summary>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                      <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0;line-height:1.3;">
+                        独自のFirebaseプロジェクトを使用する場合は、以下にConfig JSONを設定してください（空欄にすると標準データベースが使われます）。
+                      </p>
+                      <div>
+                        <label style="display:block;font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:2px;">Firebase Config JSON</label>
+                        <textarea id="fb-config-json" placeholder='{ "apiKey": "...", "authDomain": "...", ... }' style="width:100%;height:60px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:6px;color:#fff;font-family:monospace;font-size:10px;box-sizing:border-box;resize:vertical;"></textarea>
+                      </div>
+                      <div style="display:flex;justify-content:flex-end;">
+                        <button class="btn btn-sm" onclick="saveCustomConfig()" style="cursor:pointer;padding:6px 12px;font-size:11px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);border-radius:4px;">
+                          Configを保存
+                        </button>
+                      </div>
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>

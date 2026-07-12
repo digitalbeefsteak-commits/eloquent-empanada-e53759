@@ -2354,50 +2354,81 @@ window.deleteTask = deleteTask;
 // ==========================================================================
 let isFirebaseInitialized = false;
 
+// 標準のFirebase接続設定（ユーザーに提供いただいたFirebaseプロジェクト）
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD-zwYo7cw7nQwdPT7PgJp_X7jietPGZyA",
+  authDomain: "task-manager-d5d8f.firebaseapp.com",
+  projectId: "task-manager-d5d8f",
+  storageBucket: "task-manager-d5d8f.firebasestorage.app",
+  messagingSenderId: "771494713965",
+  appId: "1:771494713965:web:b46729abeeabf669983d64",
+  measurementId: "G-P3YH24ZZ7Y"
+};
+
+// ランダムな合言葉（同期キー）の自動生成
+function generateRandomSyncKey() {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let part1 = "";
+  let part2 = "";
+  for (let i = 0; i < 4; i++) {
+    part1 += chars.charAt(Math.floor(Math.random() * chars.length));
+    part2 += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `orbit-${part1}-${part2}`;
+}
+
 function initFirebase() {
+  // 同期キー（合言葉）がなければ自動生成
+  let syncKey = localStorage.getItem("firebase_sync_key");
+  if (!syncKey) {
+    syncKey = generateRandomSyncKey();
+    localStorage.setItem("firebase_sync_key", syncKey);
+  }
+
+  // Configはカスタム（詳細設定の手動入力）があればそれを使用、なければデフォルトを使用
   const configRaw = localStorage.getItem("firebase_config");
-  const syncKey = localStorage.getItem("firebase_sync_key");
+  let config;
+  if (configRaw) {
+    try {
+      config = JSON.parse(configRaw);
+    } catch (e) {
+      console.error("Custom Config parse error, fallback to default:", e);
+      config = DEFAULT_FIREBASE_CONFIG;
+    }
+  } else {
+    config = DEFAULT_FIREBASE_CONFIG;
+  }
+
+  // 設定画面の表示反映
+  const mySyncCodeInput = document.getElementById("my-sync-code");
+  if (mySyncCodeInput) {
+    mySyncCodeInput.value = syncKey;
+  }
   const configTextarea = document.getElementById("fb-config-json");
-  const syncKeyInput = document.getElementById("fb-sync-key");
-
-  if (!configRaw || !syncKey) {
-    updateHeaderSyncStatus(false);
-    return;
-  }
-
-  // 設定フォームへ復元
-  if (configTextarea && !configTextarea.value) {
+  if (configTextarea && configRaw) {
     configTextarea.value = configRaw;
-  }
-  if (syncKeyInput && !syncKeyInput.value) {
-    syncKeyInput.value = syncKey;
   }
 
   try {
-    const config = JSON.parse(configRaw);
     if (!isFirebaseInitialized) {
       firebase.initializeApp(config);
       isFirebaseInitialized = true;
     }
-
     updateHeaderSyncStatus(true);
     loadFirebaseData(syncKey);
   } catch (e) {
     console.error("Firebase Initialization Error:", e);
-    alert("Firebase設定のパースに失敗しました。正しいJSON形式か確認してください。");
     updateHeaderSyncStatus(false);
   }
 }
 
-// ヘッダーの同期状態表示と配色の切り替え
+// ヘッダーおよび設定画面の同期状態表示と配色の切り替え
 function updateHeaderSyncStatus(isCloud) {
   const badge = document.getElementById("header-sync-status-badge");
   const header = document.querySelector(".main-header");
   
   const statusText = document.getElementById("sync-status-text");
-  const btnStart = document.getElementById("btn-sync-start");
-  const configTextarea = document.getElementById("fb-config-json");
-  const syncKeyInput = document.getElementById("fb-sync-key");
+  const mySyncCodeInput = document.getElementById("my-sync-code");
 
   if (isCloud) {
     if (badge) badge.innerHTML = `<span class="badge" style="background:rgba(16,185,129,0.1);color:#10b981;font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(16,185,129,0.2);"><i data-lucide="cloud" style="width:10.5px;height:10.5px;"></i>クラウド同期中</span>`;
@@ -2410,14 +2441,6 @@ function updateHeaderSyncStatus(isCloud) {
       const currentKey = localStorage.getItem("firebase_sync_key") || "";
       statusText.innerHTML = `<span style="color:#10b981;font-weight:700;">● クラウド同期中</span> (合言葉: <span style="font-family:monospace;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">${currentKey}</span>)`;
     }
-    if (configTextarea) configTextarea.disabled = true;
-    if (syncKeyInput) syncKeyInput.disabled = true;
-    if (btnStart) {
-      btnStart.disabled = true;
-      btnStart.innerHTML = `<i data-lucide="check"></i> 接続済み`;
-      btnStart.style.opacity = "0.5";
-      btnStart.style.cursor = "default";
-    }
   } else {
     if (badge) badge.innerHTML = `<span class="badge" style="background:rgba(245,158,11,0.1);color:#f59e0b;font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(245,158,11,0.25);"><i data-lucide="alert-triangle" style="width:10.5px;height:10.5px;"></i>ローカル保存中</span>`;
     if (header) {
@@ -2428,45 +2451,97 @@ function updateHeaderSyncStatus(isCloud) {
     if (statusText) {
       statusText.innerHTML = `<span style="color:#f59e0b;font-weight:700;">● 未同期 (ローカル保存モード)</span>`;
     }
-    if (configTextarea) configTextarea.disabled = false;
-    if (syncKeyInput) syncKeyInput.disabled = false;
-    if (btnStart) {
-      btnStart.disabled = false;
-      btnStart.innerHTML = `<i data-lucide="cloud-lightning"></i> 同期を開始する`;
-      btnStart.style.opacity = "";
-      btnStart.style.cursor = "pointer";
+    if (mySyncCodeInput) {
+      mySyncCodeInput.value = "同期が解除されています";
     }
   }
   if (window.lucide) window.lucide.createIcons();
 }
 
-// Configおよび合言葉保存
-function saveFirebaseConfig() {
-  const json = document.getElementById("fb-config-json").value.trim();
-  const syncKey = document.getElementById("fb-sync-key").value.trim();
-  if (!json || !syncKey) {
-    alert("Firebase Config JSON と 端末同期用の合言葉 の両方を入力してください。");
+// 同期コードをクリップボードにコピー
+function copySyncKey() {
+  const syncKey = localStorage.getItem("firebase_sync_key");
+  if (!syncKey) {
+    alert("同期コードがありません。");
     return;
   }
-  try {
-    JSON.parse(json);
-    localStorage.setItem("firebase_config", json);
-    localStorage.setItem("firebase_sync_key", syncKey);
-    alert("同期設定を保存しました。画面を再起動して同期を開始します。");
+  navigator.clipboard.writeText(syncKey)
+    .then(() => {
+      alert("同期コードをクリップボードにコピーしました！スマホなどの他端末に貼り付けてご使用ください。");
+    })
+    .catch((err) => {
+      console.error("Could not copy text: ", err);
+      const input = document.getElementById("my-sync-code");
+      if (input) {
+        input.select();
+        document.execCommand("copy");
+        alert("同期コードを選択しました。コピー（Ctrl+C）してください。");
+      }
+    });
+}
+
+// 別の端末から同期を引き継ぐ
+function importSyncData() {
+  const inputEl = document.getElementById("import-sync-code-input");
+  if (!inputEl) return;
+  const newSyncKey = inputEl.value.trim();
+
+  if (!newSyncKey) {
+    alert("同期を引き継ぐための「合言葉（同期コード）」を入力してください。");
+    return;
+  }
+
+  if (!newSyncKey.startsWith("orbit-")) {
+    if (!confirm("入力されたコードは標準の形式（orbit-xxxx-xxxx）と異なりますが、このまま引き継ぎを行いますか？")) {
+      return;
+    }
+  }
+
+  if (confirm("本当にこの端末のデータを上書きして、指定したコードのデータを引き継ぎますか？\n※現在のローカルデータは消去され、入力したコードのデータと同期が開始されます。")) {
+    localStorage.setItem("firebase_sync_key", newSyncKey);
+    localStorage.removeItem("lifeorbit_data");
+    alert("同期コードを更新しました。データをロードします。");
     window.location.reload();
-  } catch (e) {
-    alert("無効なJSON形式です。FirebaseコンソールからコピーしたConfigオブジェクトを指定してください。");
   }
 }
 
-// Configおよび合言葉解除
-function clearFirebaseConfig() {
-  if (confirm("Firebaseの連携設定を削除し、ローカルモードに戻りますか？（登録データは消えません）")) {
-    localStorage.removeItem("firebase_config");
+// 同期解除
+function disconnectSync() {
+  if (confirm("クラウド同期を解除しますか？\n※手元のデータは消えませんが、クラウドとの連携は停止し、次回から別の新しい自動生成キーで同期されます。")) {
     localStorage.removeItem("firebase_sync_key");
+    localStorage.removeItem("firebase_config");
     window.location.reload();
   }
 }
+
+// 詳細設定：カスタムFirebase Configの保存
+function saveCustomConfig() {
+  const configTextarea = document.getElementById("fb-config-json");
+  if (!configTextarea) return;
+  const json = configTextarea.value.trim();
+
+  if (!json) {
+    localStorage.removeItem("firebase_config");
+    alert("カスタムFirebase Configを削除し、標準データベースに戻しました。ページを再起動します。");
+    window.location.reload();
+    return;
+  }
+
+  try {
+    JSON.parse(json);
+    localStorage.setItem("firebase_config", json);
+    alert("カスタムFirebase Configを保存しました。ページを再起動します。");
+    window.location.reload();
+  } catch (e) {
+    alert("無効なJSON形式です。FirebaseコンソールからコピーしたConfigオブジェクトを正しく貼り付けてください。");
+  }
+}
+
+// グローバルスコープに関数を公開
+window.copySyncKey = copySyncKey;
+window.importSyncData = importSyncData;
+window.disconnectSync = disconnectSync;
+window.saveCustomConfig = saveCustomConfig;
 
 let firestoreUnsubscribe = null;
 
