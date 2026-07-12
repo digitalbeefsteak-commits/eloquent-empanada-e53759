@@ -160,6 +160,8 @@ function formatDateDisplay(str) {
 
 function parseLocalDate(str) {
   if (!str) return new Date();
+  if (str instanceof Date) return str;
+  if (typeof str !== "string") return new Date(str);
   const parts = str.split("-");
   if (parts.length === 3) {
     return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
