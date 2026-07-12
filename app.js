@@ -21,7 +21,9 @@ let appState = {
   lastSyncTime: null,
   activeView: "dashboard",
   calendarViewMode: "week",
-  reviewMode: "daily"
+  reviewMode: "daily",
+  kanbanFilterGoal: "all",
+  kanbanFilterPriority: "all"
 };
 
 let expandedMilestones = new Set();
@@ -728,17 +730,19 @@ function renderKanban() {
     if (task.isMilestone) return;
 
     // 目標フィルター
-    if (appState.kanbanFilterGoal !== "all") {
-      if (appState.kanbanFilterGoal === "none") {
+    const filterGoal = appState.kanbanFilterGoal || "all";
+    if (filterGoal !== "all") {
+      if (filterGoal === "none") {
         if (task.goalId && task.goalId !== "none") return;
       } else {
-        if (task.goalId !== appState.kanbanFilterGoal) return;
+        if (task.goalId !== filterGoal) return;
       }
     }
 
     // 優先度フィルター
-    if (appState.kanbanFilterPriority !== "all") {
-      if (task.priority !== appState.kanbanFilterPriority) return;
+    const filterPriority = appState.kanbanFilterPriority || "all";
+    if (filterPriority !== "all") {
+      if (task.priority !== filterPriority) return;
     }
 
     const colId = colMap[task.status];
