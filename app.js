@@ -686,6 +686,34 @@ function addChildTask(parentId) {
 
 // カンバン
 function renderKanban() {
+  // 今日の日付表示の更新
+  const todayDateEl = document.getElementById("tasks-today-date");
+  if (todayDateEl) {
+    const today = appState.currentDate;
+    const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const dayName = weekDays[today.getDay()];
+    todayDateEl.textContent = `${yyyy}/${mm}/${dd} (${dayName})`;
+  }
+
+  // 今週の期間表示の更新 (月曜〜日曜)
+  const weekRangeEl = document.getElementById("tasks-week-range");
+  if (weekRangeEl) {
+    const current = new Date(appState.currentDate);
+    const day = current.getDay();
+    const diff = current.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(current.setDate(diff));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const formatRangeDate = (d) => {
+      return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+    };
+    weekRangeEl.textContent = `${formatRangeDate(monday)} 〜 ${formatRangeDate(sunday)}`;
+  }
+
   const colMap = {
     "today": "cards-today",
     "this_week": "cards-this_week",
