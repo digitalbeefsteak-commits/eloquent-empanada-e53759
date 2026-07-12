@@ -1883,6 +1883,11 @@ label {
     margin-bottom: 6px !important;
   }
 
+  /* スマホ版ではダッシュボードのタスククイックボタン群を非表示にしてタイトルをフル表示 */
+  .task-quick-btns {
+    display: none !important;
+  }
+
   /* 週間バーチカルカレンダーのインナースクロール化（画面全体の横揺れを防ぐ） */
   .calendar-week-view {
     overflow-x: auto !important;
