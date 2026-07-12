@@ -2340,32 +2340,17 @@ function initFirebase() {
   }
 }
 
-// ヘッダーおよび設定画面の同期状態表示と配色の切り替え
+// 設定画面の同期状態表示の更新
 function updateHeaderSyncStatus(isCloud) {
-  const badge = document.getElementById("header-sync-status-badge");
-  const header = document.querySelector(".main-header");
-  
   const statusText = document.getElementById("sync-status-text");
   const mySyncCodeInput = document.getElementById("my-sync-code");
 
   if (isCloud) {
-    if (badge) badge.innerHTML = `<span class="badge" style="background:rgba(16,185,129,0.1);color:#10b981;font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(16,185,129,0.2);"><i data-lucide="cloud" style="width:10.5px;height:10.5px;"></i>クラウド同期中</span>`;
-    if (header) {
-      header.style.background = "transparent";
-      header.style.borderBottom = "1px solid var(--border-glass)";
-    }
-    
     if (statusText) {
       const currentKey = localStorage.getItem("firebase_sync_key") || "";
       statusText.innerHTML = `<span style="color:#10b981;font-weight:700;">● クラウド同期中</span> (合言葉: <span style="font-family:monospace;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">${currentKey}</span>)`;
     }
   } else {
-    if (badge) badge.innerHTML = `<span class="badge" style="background:rgba(245,158,11,0.1);color:#f59e0b;font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(245,158,11,0.25);"><i data-lucide="alert-triangle" style="width:10.5px;height:10.5px;"></i>ローカル保存中</span>`;
-    if (header) {
-      header.style.background = "linear-gradient(to right, rgba(245,158,11,0.06), transparent)";
-      header.style.borderBottom = "1px solid rgba(245,158,11,0.22)";
-    }
-
     if (statusText) {
       statusText.innerHTML = `<span style="color:#f59e0b;font-weight:700;">● 未同期 (ローカル保存モード)</span>`;
     }
