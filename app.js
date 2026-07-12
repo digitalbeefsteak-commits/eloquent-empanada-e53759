@@ -269,7 +269,7 @@ function renderDashboardGoals() {
 
     const div = document.createElement("div");
     div.className = "goal-progress-item";
-    div.style.cssText = "margin-bottom:10px;";
+    div.style.cssText = "margin-bottom:0;";
 
     // ヘッダー行：[▶] [LIFE] タイトル ............. 2/6・33%
     const header = document.createElement("div");
@@ -300,7 +300,7 @@ function renderDashboardGoals() {
       const nextMsDiv = document.createElement("div");
       nextMsDiv.style.cssText = "font-size:11px;color:rgba(255,255,255,0.4);margin-left:21px;margin-top:5px;display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
       nextMsDiv.innerHTML = `
-        <span style="color:${g.color || "#818cf8"};font-weight:700;font-family:monospace;flex-shrink:0;">直近MS: ${formatDateDisplay(nextMilestone.duedate)||"未定"}</span>
+        <span style="color:${g.color || "#818cf8"};font-weight:700;font-family:monospace;flex-shrink:0;">Next: ${formatDateDisplay(nextMilestone.duedate)||"未定"}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,0.65);">${nextMilestone.title}</span>
       `;
       div.appendChild(nextMsDiv);

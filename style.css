@@ -607,13 +607,13 @@ body {
 .goals-progress-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
 .goal-progress-item {
   display: flex;
   flex-direction: column;
-  padding: 10px 14px;
+  padding: 6px 10px;
   background: rgba(255,255,255,0.02);
   border-radius: var(--radius-md);
   border: 1px solid rgba(255,255,255,0.03);
