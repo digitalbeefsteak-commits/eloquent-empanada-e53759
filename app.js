@@ -771,6 +771,28 @@ function renderKanban() {
 
     const card = document.createElement("div");
     card.className = "kanban-card";
+    
+    // 優先度(重要度)に応じた色の薄さ（不透明度）および枠線のスタイリング
+    let opacityVal = 1.0;
+    let borderStyle = "";
+    let bgStyle = "";
+    if (!isOverdue && !isWaitingOverdue) {
+      if (task.priority === "high") {
+        opacityVal = 1.0;
+        borderStyle = "border: 1px solid rgba(255, 255, 255, 0.16);";
+        bgStyle = "background: rgba(255, 255, 255, 0.05);";
+      } else if (task.priority === "low") {
+        opacityVal = 0.6;
+        borderStyle = "border: 1px solid rgba(255, 255, 255, 0.03);";
+        bgStyle = "background: rgba(255, 255, 255, 0.012);";
+      } else {
+        opacityVal = 0.82;
+        borderStyle = "border: 1px solid rgba(255, 255, 255, 0.08);";
+        bgStyle = "background: rgba(255, 255, 255, 0.03);";
+      }
+    }
+    card.style.cssText = `opacity: ${opacityVal}; ${borderStyle} ${bgStyle}`;
+
     card.draggable = true;
     card.dataset.taskId = task.id;
     card.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", task.id); });
