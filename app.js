@@ -55,6 +55,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+// 古いプレフィックス（【Garoon】や【インポート】）を既存の予定名から一括削除する
+function cleanOldSchedulePrefixes() {
+  let changed = false;
+  if (appState.schedules && appState.schedules.length) {
+    appState.schedules.forEach(s => {
+      if (s.title) {
+        const cleaned = s.title.replace(/^【Garoon】/, "").replace(/^【インポート】/, "");
+        if (cleaned !== s.title) {
+          s.title = cleaned;
+          changed = true;
+        }
+      }
+    });
+  }
+  return changed;
+}
+
 function loadData() {
   const raw = localStorage.getItem("lifeorbit_data");
   if (raw) {
@@ -84,6 +101,12 @@ function loadData() {
           updated = true;
         }
       });
+      
+      // 古いタイトルのクリーンアップ
+      if (cleanOldSchedulePrefixes()) {
+        updated = true;
+      }
+      
       if (updated) saveData();
     } catch (e) {
       console.error("Parse error:", e);
@@ -2474,9 +2497,22 @@ function loadFirebaseData(syncKey) {
         appState.schedules = data.schedules || [];
         appState.lastSyncTime = data.lastSyncTime || null;
         
-        localStorage.setItem("lifeorbit_data", JSON.stringify(data));
+        // 既存データのプレフィックスクリーンアップ
+        const didClean = cleanOldSchedulePrefixes();
+        
+        localStorage.setItem("lifeorbit_data", JSON.stringify({
+          goals: appState.goals,
+          tasks: appState.tasks,
+          schedules: appState.schedules,
+          lastSyncTime: appState.lastSyncTime
+        }));
+        
         renderAll();
         console.log("Firestore data synchronized in real-time.");
+        
+        if (didClean) {
+          syncDataToFirebase();
+        }
       }
     } else {
       console.log("Firestoreにデータがありません。現在のローカルデータを同期先にアップロードします。");
