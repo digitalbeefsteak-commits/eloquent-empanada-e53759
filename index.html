@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LifeOrbit - ゲームプロデューサー向け統合目標・タスク・スケジュール管理</title>
-  <meta name="description" content="目標(Goals)・タスク(Tasks)・スケジュール(Garoon iCS連携)をシームレスに一括管理し、空き時間を可視化するゲームプロデューサー特化型SPA。">
+  <title>LifeOrbit - 統合目標・タスク・スケジュール管理</title>
+  <meta name="description" content="目標(Goals)・タスク(Tasks)・スケジュール(外部iCS連携)をシームレスに一括管理し、空き時間を可視化する統合タスク管理SPA。">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,7 +60,7 @@
         </button>
       </nav>
 
-      <!-- Garoon同期ステータスと時計 -->
+      <!-- 外部連携ステータスと時計 -->
       <div class="sidebar-footer">
         <div class="clock-panel">
           <div class="clock-time" id="clock-time">00:00:00</div>
@@ -69,7 +69,7 @@
         <div class="sync-status" id="sync-status-panel">
           <div class="sync-indicator offline" id="sync-indicator"></div>
           <div class="sync-info">
-            <span class="sync-title">Garoon連携</span>
+            <span class="sync-title">カレンダー連携</span>
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
@@ -271,8 +271,8 @@
           <div class="ics-drop-zone glass" id="ics-drop-zone">
             <i data-lucide="file-up" class="drop-icon"></i>
             <div class="drop-text">
-              <h3>Garoon スケジュールインポート</h3>
-              <p>Garoonからエクスポートした <strong>.ics ファイル</strong> をここにドラッグ＆ドロップ、または <span class="browse-link" id="browse-ics-link">ファイルを選択</span> して読み込ませてください。</p>
+              <h3>外部カレンダー スケジュールインポート</h3>
+              <p>グループウェア等のカレンダーからエクスポートした <strong>.ics ファイル</strong> をここにドラッグ＆ドロップ、または <span class="browse-link" id="browse-ics-link">ファイルを選択</span> して読み込ませてください。</p>
             </div>
             <input type="file" id="ics-file-input" accept=".ics" style="display:none;">
           </div>
@@ -626,7 +626,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="schedule-title">予定名 <span class="required">*</span></label>
-            <input type="text" id="schedule-title" required placeholder="例: LIFE 開発進捗定例ミーティング" class="input-text">
+            <input type="text" id="schedule-title" required placeholder="例: 新規プロジェクト進捗定例ミーティング" class="input-text">
           </div>
 
           <div class="form-row">
@@ -681,13 +681,13 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="goal-title">目標名 <span class="required">*</span></label>
-            <input type="text" id="goal-title" required placeholder="例: 超大型SFオンラインRPG『LIFE』のリリース" class="input-text">
+            <input type="text" id="goal-title" required placeholder="例: 新規プロダクトの正式リリース" class="input-text">
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="goal-shortname">略称 <span class="required">*</span></label>
-              <input type="text" id="goal-shortname" required placeholder="例: LIFE" class="input-text">
+              <input type="text" id="goal-shortname" required placeholder="例: Project-A" class="input-text">
             </div>
             <div class="form-group">
               <label>テーマカラー</label>

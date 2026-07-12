@@ -198,14 +198,14 @@ function parseICS(text) {
     const allday = (e.dtstart || "").length <= 8;
     return {
       id: "sch-g-" + Math.random().toString(36).substr(2, 9),
-      title: "【Garoon】" + (e.title || "予定"),
+      title: "【インポート】" + (e.title || "予定"),
       startDate: formatDate(start),
       startTime: allday ? "00:00" : start.toTimeString().substring(0,5),
       endDate: formatDate(end),
       endTime: allday ? "23:59" : end.toTimeString().substring(0,5),
       allday,
       desc: e.desc || "",
-      isGaroon: true
+      isExternal: true
     };
   }).filter(Boolean);
 }
@@ -478,8 +478,8 @@ function renderTimeline() {
     contentDiv.style.cssText = "flex-grow:1;min-width:0;";
 
     if (activeSch) {
-      const schColor = activeSch.isGaroon ? "#a855f7" : "#3b82f6";
-      const schBg = activeSch.isGaroon ? "rgba(168,85,247,0.08)" : "rgba(59,130,246,0.08)";
+      const schColor = activeSch.isExternal ? "#a855f7" : "#3b82f6";
+      const schBg = activeSch.isExternal ? "rgba(168,85,247,0.08)" : "rgba(59,130,246,0.08)";
       contentDiv.innerHTML = `
         <div onclick="openEditScheduleModal('${activeSch.id}')" style="cursor:pointer;padding:7px 8px;display:flex;align-items:center;gap:8px;background:${schBg};">
           <div style="width:3px;border-radius:2px;align-self:stretch;min-height:20px;background:${schColor};"></div>
@@ -848,7 +848,7 @@ function renderCalendar() {
       const schsToday = appState.schedules.filter(s => s.startDate === dateStr);
       schsToday.forEach(s => {
         const el = document.createElement("div");
-        el.style.cssText = `font-size:10px;padding:1px 4px;border-radius:2px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;background:${s.isGaroon?"rgba(168,85,247,0.3)":"rgba(59,130,246,0.3)"};color:#fff;`;
+        el.style.cssText = `font-size:10px;padding:1px 4px;border-radius:2px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;background:${s.isExternal?"rgba(168,85,247,0.3)":"rgba(59,130,246,0.3)"};color:#fff;`;
         el.textContent = s.title;
         el.onclick = () => openEditScheduleModal(s.id);
         cell.appendChild(el);
@@ -974,9 +974,9 @@ function renderWeekView() {
       const heightPx = (duration / 60) * 60;
 
       const eventEl = document.createElement("div");
-      const bg = s.isGaroon ? "rgba(168,85,247,0.22)" : "rgba(59,130,246,0.22)";
-      const border = s.isGaroon ? "1px solid rgba(168,85,247,0.5)" : "1px solid rgba(59,130,246,0.5)";
-      const indicator = s.isGaroon ? "#a855f7" : "#3b82f6";
+      const bg = s.isExternal ? "rgba(168,85,247,0.22)" : "rgba(59,130,246,0.22)";
+      const border = s.isExternal ? "1px solid rgba(168,85,247,0.5)" : "1px solid rgba(59,130,246,0.5)";
+      const indicator = s.isExternal ? "#a855f7" : "#3b82f6";
       
       eventEl.style.cssText = `
         position:absolute;
@@ -1398,7 +1398,7 @@ function handleScheduleFormSubmit(e) {
     const s = appState.schedules.find(s => s.id === id);
     if (s) { s.title=title; s.startDate=startDate; s.startTime=startTime; s.endDate=endDate; s.endTime=endTime; s.allday=allday; s.desc=desc; }
   } else {
-    appState.schedules.push({ id:"sch-"+Date.now(), title, startDate, startTime, endDate, endTime, allday, desc, isGaroon:false });
+    appState.schedules.push({ id:"sch-"+Date.now(), title, startDate, startTime, endDate, endTime, allday, desc, isExternal:false });
   }
   saveData();
   closeModal("modal-schedule-form");
@@ -1421,12 +1421,12 @@ function handleICSImport(file) {
   reader.onload = e => {
     const newSchs = parseICS(e.target.result);
     if (newSchs.length) {
-      appState.schedules = appState.schedules.filter(s => !s.isGaroon);
+      appState.schedules = appState.schedules.filter(s => !s.isExternal);
       appState.schedules.push(...newSchs);
       appState.lastSyncTime = new Date().toISOString();
       saveData();
       renderAll();
-      alert(`${newSchs.length}件のGaroon予定をインポートしました。`);
+      alert(`${newSchs.length}件の予定をインポートしました。`);
     } else {
       alert("有効な予定が見つかりませんでした。");
     }
@@ -1510,7 +1510,7 @@ function switchView(viewName) {
   });
   // ヘッダータイトル更新
   const titles = { dashboard: "ダッシュボード", goals: "目標 (Goals)", tasks: "タスク (Tasks)", calendar: "カレンダー", review: "レビュー", settings: "設定・バックアップ" };
-  const subs = { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "タスクのカンバン管理", calendar: "スケジュールとGaroon連携", review: "活動実績の振り返りと未完了タスクの棚卸し", settings: "データの管理とバックアップ" };
+  const subs = { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "タスクのカンバン管理", calendar: "スケジュールとカレンダー連携", review: "活動実績の振り返りと未完了タスクの棚卸し", settings: "データの管理とバックアップ" };
   const titleEl = document.getElementById("view-title");
   if (titleEl) titleEl.textContent = titles[viewName] || viewName;
   if (subEl) subEl.textContent = subs[viewName] || "";
@@ -2564,7 +2564,7 @@ function deployDataToFirebase() {
 function resetDataCategory(category) {
   const confirmMsg = {
     tasks: "【警告】すべてのタスク（マイルストーン、子タスク含む）を完全に削除します。この操作は元に戻せません。よろしいですか？",
-    schedules: "【警告】すべてのスケジュール（Garoonからインポートした予定含む）を完全に削除します。この操作は元に戻せません。よろしいですか？",
+    schedules: "【警告】すべてのスケジュール（外部からインポートした予定含む）を完全に削除します。この操作は元に戻せません。よろしいですか？",
     goals: "【警告】すべての目標を完全に削除します。※紐づいていたタスクの関連目標は自動的に「なし」にクリアされます。よろしいですか？",
     all: "【超重大警告】タスク、スケジュール、目標を含む「すべてのデータ」を完全に削除し、アプリを空にします。この操作は元に戻せません。本当によろしいですか？"
   };
