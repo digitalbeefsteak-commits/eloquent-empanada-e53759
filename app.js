@@ -1495,6 +1495,27 @@ function importData(file) {
   reader.readAsText(file);
 }
 
+function importDataFromText() {
+  const text = prompt("コピーしたJSONテキストをここに貼り付けてください（Ctrl+V または長押しでペースト）:");
+  if (text === null) return;
+  const trimmed = text.trim();
+  if (!trimmed) {
+    alert("テキストが入力されていません。");
+    return;
+  }
+  try {
+    const data = JSON.parse(trimmed);
+    if (data.goals) appState.goals = data.goals;
+    if (data.tasks) appState.tasks = data.tasks;
+    if (data.schedules) appState.schedules = data.schedules;
+    saveData();
+    renderAll();
+    alert("データをインポートしました。");
+  } catch(err) {
+    alert("インポートに失敗しました。JSONテキストが正しい形式か確認してください。");
+  }
+}
+
 function updateSyncDisplay() {
   const el = document.getElementById("sync-time-text");
   if (!el) return;
@@ -1722,6 +1743,8 @@ function setupEventListeners() {
   const importInput = document.getElementById("import-file-input");
   if (btnImportTrigger && importInput) btnImportTrigger.addEventListener("click", () => importInput.click());
   if (importInput) importInput.addEventListener("change", e => { if(e.target.files[0]) importData(e.target.files[0]); });
+  const btnImportText = document.getElementById("btn-import-text-trigger");
+  if (btnImportText) btnImportText.addEventListener("click", importDataFromText);
   const btnReset = document.getElementById("btn-reset-app");
   if (btnReset) btnReset.addEventListener("click", () => {
     if (confirm("すべてのデータをサンプルデータでリセットします。よろしいですか？")) { resetToDefault(); renderAll(); }

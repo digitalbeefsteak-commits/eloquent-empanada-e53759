@@ -400,9 +400,13 @@
                     <i data-lucide="download"></i>
                     <span>データをエクスポート (JSON)</span>
                   </button>
-                  <button class="btn btn-secondary" id="btn-import-trigger">
-                    <i data-lucide="upload"></i>
-                    <span>データをインポート (JSON)</span>
+                  <button class="btn btn-secondary" id="btn-import-trigger" title="JSONファイルを選択して読み込みます">
+                    <i data-lucide="file-up"></i>
+                    <span>ファイルからインポート</span>
+                  </button>
+                  <button class="btn btn-secondary" id="btn-import-text-trigger" title="コピーしたJSONテキストを直接貼り付けます">
+                    <i data-lucide="clipboard"></i>
+                    <span>テキストを貼り付けてインポート</span>
                   </button>
                   <input type="file" id="import-file-input" accept=".json" style="display:none;">
                 </div>
