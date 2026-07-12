@@ -8,91 +8,9 @@
 // STATE MANAGEMENT & INITIAL DATA
 // ==========================================================================
 
-const DEFAULT_GOALS = [
-  {
-    id: "goal-life",
-    title: "【自社開発】超大型SFオンラインRPG『LIFE』のリリース",
-    shortName: "LIFE",
-    metric: "Steam評価75%以上、本数30万本達成",
-    tag: "life",
-    color: "var(--color-life)",
-    tagClass: "goal-tag-life",
-    cardClass: "goal-life"
-  },
-  {
-    id: "goal-ninpri",
-    title: "【受託開発】任天堂IPキャラクターアクション『NinPriR』マスターアップ",
-    shortName: "NinPriR",
-    metric: "バグ発生率ゼロ、納期厳守",
-    tag: "ninpri",
-    color: "var(--color-ninpri)",
-    tagClass: "goal-tag-ninpri",
-    cardClass: "goal-ninpri"
-  },
-  {
-    id: "goal-indie",
-    title: "【インディー支援】支援インディーゲーム3タイトルのパブリッシング",
-    shortName: "Indies",
-    metric: "Marshal/Gray/Chopの年内発売、または発売日確定",
-    tag: "indie",
-    color: "var(--color-indie)",
-    tagClass: "goal-tag-indie",
-    cardClass: "goal-indie"
-  },
-  {
-    id: "goal-new",
-    title: "【新規立ち上げ】外部有名クリエイター協業タイトルの企画フィジビリティ",
-    shortName: "NEW",
-    metric: "新規タイトルの本制作移行に向けたプロトタイプおよび企画の最終承認",
-    tag: "new",
-    color: "var(--color-new)",
-    tagClass: "goal-tag-new",
-    cardClass: "goal-new"
-  }
-];
-
-const DEFAULT_TASKS = [
-  // LIFE マイルストーン
-  { id: "task-1", title: "Steamストアページ向けモックアップ作成と確認", goalId: "goal-life", priority: "high", status: "this_week", completedAt: null, duedate: "2026-07-15", desc: "プロモーション用に早期にSteamストアを構築する。キーアートの選定と紹介テキスト案作成。", isMilestone: true },
-  { id: "task-2", title: "アルファ版ビルドの社内プレイテストフィードバック集計", goalId: "goal-life", priority: "high", status: "completed", completedAt: "2026-07-08T18:00:00+09:00", duedate: "2026-07-08", desc: "開発チームから上がったバグと改善要望をスプレッドシートにまとめ、優先度を設定する。", isMilestone: false },
-  { id: "task-3", title: "LIFE PVファーストカットのディレクターズチェック", goalId: "goal-life", priority: "medium", status: "next_week_and_later", completedAt: null, duedate: "2026-07-20", desc: "マーケチームが作成したPVの構成案を確認し、ゲームプレイの魅力が伝わっているかチェック。", isMilestone: true },
-  { id: "task-4", title: "ローカライズ会社との見積もり・スケジュール調整", goalId: "goal-life", priority: "low", status: "waiting", completedAt: null, duedate: "2026-07-31", desc: "英語、簡体字、繁体字、韓国語の翻訳手配。", isMilestone: false },
-
-  // task-1の子タスク
-  { id: "subtask-s4", title: "キーアートの選定", goalId: "goal-life", priority: "medium", status: "completed", completedAt: "2026-07-09T14:00:00+09:00", duedate: "2026-07-15", desc: "", isMilestone: false, parentTaskId: "task-1" },
-  { id: "subtask-s5", title: "紹介テキスト案作成", goalId: "goal-life", priority: "medium", status: "today", completedAt: null, duedate: "2026-07-15", desc: "", isMilestone: false, parentTaskId: "task-1" },
-
-  // NinPriR
-  { id: "task-5", title: "外部開発会社との定例進捗会議アジェンダ作成", goalId: "goal-ninpri", priority: "medium", status: "completed", completedAt: "2026-07-09T18:00:00+09:00", duedate: "2026-07-09", desc: "マスターアップに向けた残課題（特にQA状況）について議論する。", isMilestone: false },
-  { id: "task-6", title: "Steam評価80%達成のためのQA重点項目選定", goalId: "goal-ninpri", priority: "high", status: "this_week", completedAt: null, duedate: "2026-07-18", desc: "過去作のユーザーレビューを分析し、クラッシュ率の低減と操作性フィードバックの反映を指示。", isMilestone: true },
-  { id: "task-7", title: "プロモーション用プレスリリースの監修", goalId: "goal-ninpri", priority: "low", status: "waiting", completedAt: null, duedate: "2026-07-25", desc: "パブリッシャーから届いたリリース初稿のファクトチェック。", isMilestone: false },
-
-  // Indie
-  { id: "task-8", title: "インディータイトル『Marshal』のパブリッシング契約書捺印手続き", goalId: "goal-indie", priority: "high", status: "completed", completedAt: "2026-07-05T18:00:00+09:00", duedate: "2026-07-05", desc: "法務チェック完了、捺印に回す。", isMilestone: false },
-  { id: "task-9", title: "『Gray』開発マイルストーンチェック（β版確認）", goalId: "goal-indie", priority: "medium", status: "this_week", completedAt: null, duedate: "2026-07-22", desc: "インディー開発者から届いた最新ビルドを実機でプレイし、フィードバックシートを送付。", isMilestone: true },
-  { id: "task-10", title: "『Chop』の発売日決定に向けたプラットフォーム調整", goalId: "goal-indie", priority: "high", status: "next_week_and_later", completedAt: null, duedate: "2026-07-28", desc: "Nintendo Switch/Steamで同日リリースするための調整。", isMilestone: false },
-
-  // New Title
-  { id: "task-11", title: "外部有名クリエイターとの初期コンセプト会議", goalId: "goal-new", priority: "high", status: "completed", completedAt: "2026-07-07T18:00:00+09:00", duedate: "2026-07-07", desc: "世界観、メインターゲット、大枠のゲームジャンルについての合意形成。", isMilestone: false },
-  { id: "task-12", title: "新規タイトル本制作移行への投資委員会プレゼン承認", goalId: "goal-new", priority: "high", status: "this_week", completedAt: null, duedate: "2026-07-25", desc: "投資委員会での承認を得て本制作フェーズに移行するための準備。", isMilestone: true },
-
-  // task-12の子タスク
-  { id: "subtask-s1", title: "PL表作成と予算シミュレーション", goalId: "goal-new", priority: "medium", status: "today", completedAt: null, duedate: "2026-07-25", desc: "", isMilestone: false, parentTaskId: "task-12" },
-  { id: "subtask-s2", title: "事業部長の事前承認を得る", goalId: "goal-new", priority: "medium", status: "completed", completedAt: "2026-07-09T12:00:00+09:00", duedate: "2026-07-25", desc: "", isMilestone: false, parentTaskId: "task-12" },
-  { id: "subtask-s3", title: "委員会説明用のプレゼン映像完成", goalId: "goal-new", priority: "medium", status: "today", completedAt: null, duedate: "2026-07-25", desc: "", isMilestone: false, parentTaskId: "task-12" },
-
-  // 雑タスク
-  { id: "task-13", title: "今週のチームメンバー工数表の承認", goalId: "none", priority: "medium", status: "today", completedAt: null, duedate: "2026-07-10", desc: "金曜日締め切りの工数承認フロー。", isMilestone: false },
-  { id: "task-14", title: "経費精算書の処理", goalId: "none", priority: "low", status: "completed", completedAt: "2026-07-05T18:00:00+09:00", duedate: "2026-07-05", desc: "6月分の出張費精算。", isMilestone: false },
-  { id: "task-15", title: "海外パブリッシャーからのメール返信", goalId: "none", priority: "high", status: "today", completedAt: null, duedate: "2026-07-10", desc: "ライセンス条件に関する問い合わせへの返答。", isMilestone: false }
-];
-
-const DEFAULT_SCHEDULES = [
-  { id: "sch-1", title: "プロジェクト『LIFE』定例進捗会議", startDate: "2026-07-10", startTime: "10:00", endDate: "2026-07-10", endTime: "11:00", allday: false, desc: "社内メイン会議室。進捗確認と課題整理。", isGaroon: false },
-  { id: "sch-2", title: "海外パブリッシャー合同オンライン会議", startDate: "2026-07-10", startTime: "15:00", endDate: "2026-07-10", endTime: "16:00", allday: false, desc: "Teams会議。プロモーションプランについて。", isGaroon: false },
-  { id: "sch-g1", title: "【Garoon】経営役員会向けLIFE進捗報告", startDate: "2026-07-10", startTime: "13:00", endDate: "2026-07-10", endTime: "14:00", allday: false, desc: "役員会議室A。P&Lおよびマイルストーン報告。", isGaroon: true },
-  { id: "sch-g2", title: "【Garoon】NinPriR 外部開発週次進捗報告", startDate: "2026-07-10", startTime: "16:30", endDate: "2026-07-10", endTime: "17:30", allday: false, desc: "会議室Cにて開発パートナー会社と接続。", isGaroon: true }
-];
+const DEFAULT_GOALS = [];
+const DEFAULT_TASKS = [];
+const DEFAULT_SCHEDULES = [];
 
 let appState = {
   goals: [],
@@ -2711,8 +2629,6 @@ window.deleteReviewTask = deleteReviewTask;
 window.bulkMoveReviewTasks = bulkMoveReviewTasks;
 window.bulkDeleteReviewTasks = bulkDeleteReviewTasks;
 window.initFirebase = initFirebase;
-window.saveFirebaseConfig = saveFirebaseConfig;
-window.clearFirebaseConfig = clearFirebaseConfig;
 window.syncDataToFirebase = syncDataToFirebase;
 window.resetDataCategory = resetDataCategory;
 window.updateHeaderSyncStatus = updateHeaderSyncStatus;
