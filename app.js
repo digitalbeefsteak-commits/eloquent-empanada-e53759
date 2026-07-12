@@ -689,7 +689,7 @@ function renderKanban() {
   // 今日の日付表示の更新
   const todayDateEl = document.getElementById("tasks-today-date");
   if (todayDateEl) {
-    const today = appState.currentDate;
+    const today = parseLocalDate(appState.currentDate);
     const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, "0");
@@ -701,7 +701,7 @@ function renderKanban() {
   // 今週の期間表示の更新 (月曜〜日曜)
   const weekRangeEl = document.getElementById("tasks-week-range");
   if (weekRangeEl) {
-    const current = new Date(appState.currentDate);
+    const current = parseLocalDate(appState.currentDate);
     const day = current.getDay();
     const diff = current.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(current.setDate(diff));
