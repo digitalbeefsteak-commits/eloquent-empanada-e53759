@@ -212,25 +212,97 @@ function parseICS(text) {
       else if (key === "DESCRIPTION") ev.desc = val.replace(/\\n/g, "\n").replace(/\\,/g, ",");
       else if (key === "DTSTART") ev.dtstart = val;
       else if (key === "DTEND") ev.dtend = val;
+      else if (key === "RRULE") ev.rrule = val;
     }
   }
-  return events.map(e => {
+
+  const result = [];
+  events.forEach(e => {
     const start = parseICSDate(e.dtstart);
     const end = parseICSDate(e.dtend);
-    if (!start || !end) return null;
+    if (!start || !end) return;
+
     const allday = (e.dtstart || "").length <= 8;
-    return {
-      id: "sch-g-" + Math.random().toString(36).substr(2, 9),
-      title: e.title || "予定",
-      startDate: formatDate(start),
-      startTime: allday ? "00:00" : start.toTimeString().substring(0,5),
-      endDate: formatDate(end),
-      endTime: allday ? "23:59" : end.toTimeString().substring(0,5),
-      allday,
-      desc: e.desc || "",
-      isExternal: true
-    };
-  }).filter(Boolean);
+    const durationMs = end.getTime() - start.getTime();
+
+    // 繰り返し設定(RRULE)がない場合は単一イベントとして追加
+    if (!e.rrule) {
+      result.push(createEventObject(e.title, start, end, allday, e.desc));
+      return;
+    }
+
+    // RRULEをパース
+    const rruleObj = {};
+    e.rrule.split(";").forEach(part => {
+      const [k, v] = part.split("=");
+      if (k && v) rruleObj[k] = v;
+    });
+
+    const freq = rruleObj.FREQ;
+    const interval = parseInt(rruleObj.INTERVAL || "1", 10);
+    
+    let untilDate = null;
+    if (rruleObj.UNTIL) {
+      untilDate = parseICSDate(rruleObj.UNTIL);
+    }
+    
+    // 最大90日間展開
+    const maxDate = new Date(start.getTime());
+    maxDate.setDate(maxDate.getDate() + 90);
+    const limitDate = untilDate && untilDate < maxDate ? untilDate : maxDate;
+
+    let currentStart = new Date(start.getTime());
+    let count = 0;
+    const maxCount = parseInt(rruleObj.COUNT || "100", 10);
+
+    while (currentStart <= limitDate && count < maxCount) {
+      let shouldAdd = true;
+      if (freq === "WEEKLY" && rruleObj.BYDAY) {
+        const dayMap = { "SU": 0, "MO": 1, "TU": 2, "WE": 3, "TH": 4, "FR": 5, "SA": 6 };
+        const currentDay = currentStart.getDay();
+        const allowedDays = rruleObj.BYDAY.split(",").map(d => dayMap[d.trim()]);
+        if (!allowedDays.includes(currentDay)) {
+          shouldAdd = false;
+        }
+      }
+
+      if (shouldAdd) {
+        const currentEnd = new Date(currentStart.getTime() + durationMs);
+        result.push(createEventObject(e.title, currentStart, currentEnd, allday, e.desc));
+        count++;
+      }
+
+      if (freq === "DAILY") {
+        currentStart.setDate(currentStart.getDate() + interval);
+      } else if (freq === "WEEKLY") {
+        if (rruleObj.BYDAY) {
+          currentStart.setDate(currentStart.getDate() + 1);
+        } else {
+          currentStart.setDate(currentStart.getDate() + (7 * interval));
+        }
+      } else if (freq === "MONTHLY") {
+        currentStart.setMonth(currentStart.getMonth() + interval);
+      } else {
+        break;
+      }
+    }
+  });
+
+  return result;
+}
+
+function createEventObject(title, start, end, allday, desc) {
+  return {
+    id: "sch-g-" + Math.random().toString(36).substr(2, 9),
+    title: title || "予定",
+    startDate: formatDate(start),
+    startTime: allday ? "00:00" : start.toTimeString().substring(0, 5),
+    endDate: formatDate(end),
+    endTime: allday ? "23:59" : end.toTimeString().substring(0, 5),
+    allday,
+    desc: desc || "",
+    isExternal: true
+  };
 }
 
 function parseICSDate(val) {
@@ -497,7 +569,10 @@ function renderTimeline() {
 
     const activeSch = scheds.find(s => {
       if (s.allday) return false;
-      return slotMin >= parseTime(s.startTime) && slotMin < parseTime(s.endTime);
+      const start = parseTime(s.startTime);
+      const end = parseTime(s.endTime);
+      // スロット[slotMin, slotMin + 60] と予定[start, end] が重複しているかを判定
+      return slotMin < end && (slotMin + 60) > start;
     });
     const assignedTasks = appState.tasks.filter(t => t.assignedTimeSlot === slot && t.status === "today");
     const hasOverdueTasks = isPastSlot && assignedTasks.length > 0;
