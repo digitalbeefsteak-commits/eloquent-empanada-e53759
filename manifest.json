@@ -1,0 +1,21 @@
+{
+  "short_name": "LifeOrbit",
+  "name": "LifeOrbit - AIタスク&カレンダー",
+  "icons": [
+    {
+      "src": "orbit-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "orbit-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#0d0e12",
+  "theme_color": "#0d0e12",
+  "display": "standalone",
+  "orientation": "portrait"
+}
