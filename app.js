@@ -563,7 +563,8 @@ function renderTimeline() {
   let freeMinutes = 0;
 
   // 1. スロット行の描画 (9:00 から 20:30 までの30分刻み、計24スロット)
-  const slotHeight = 48; // 各スロットの高さ (px)
+  const slotHeight = 34; // 各スロットの高さ (px) - 約70%に縮小 (48 * 0.7 = 33.6 -> 34px)
+  const minRatio = slotHeight / 30; // 1分あたりの高さ比率
   
   // スクリューバグ対策・絶対配置の親とするためのインナーコンテナを作成
   const inner = document.createElement("div");
@@ -601,44 +602,66 @@ function renderTimeline() {
     const row = document.createElement("div");
     row.dataset.slot = slot;
 
-    // 行背景・ボーダー
+    // 行背景・ボーダー (正時と30分でボーダーの強弱をつける)
     const rowBg = isCurrentSlot ? "rgba(99,210,255,0.06)" : hasOverdueTasks ? "rgba(239,68,68,0.05)" : "transparent";
     const rowBorderTop = isCurrentSlot ? "border-top:2px solid rgba(99,210,255,0.6);" : "";
+    const isHourBoundary = sObj.m === 30; // この行の下は次の正時
+    const rowBorderBottom = isHourBoundary 
+      ? "border-bottom: 1px solid rgba(255,255,255,0.08);" 
+      : "border-bottom: 1px dashed rgba(255,255,255,0.03);";
+
     row.style.cssText = `
       display:flex;
       gap:0;
       height:${slotHeight}px;
       box-sizing:border-box;
-      border-bottom:1px solid rgba(255,255,255,0.04);
+      ${rowBorderBottom}
       ${rowBorderTop}
       background:${rowBg};
       transition:background 0.15s;
       position:relative;
     `;
 
-    // 時刻ラベル (30分刻みなので :00 と :30 の表示)
-    const timeLabelColor = isCurrentSlot ? "#63d2ff" : isPastSlot ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.35)";
-    const nowBadge = isCurrentSlot ? `<div style="font-size:7.5px;color:#63d2ff;font-weight:800;letter-spacing:0.05em;margin-top:-2px;">NOW</div>` : "";
+    // 時刻ラベルの強弱 (正時は大きく太く、30分は小さく薄く)
+    let timeLabelColor, timeLabelSize, timeLabelWeight;
+    if (sObj.m === 0) {
+      // 正時
+      timeLabelColor = isCurrentSlot ? "#63d2ff" : isPastSlot ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.55)";
+      timeLabelSize = "11px";
+      timeLabelWeight = "600";
+    } else {
+      // 30分
+      timeLabelColor = isCurrentSlot ? "#63d2ff" : isPastSlot ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.25)";
+      timeLabelSize = "9px";
+      timeLabelWeight = "400";
+    }
+
+    const nowBadge = isCurrentSlot ? `<div style="font-size:7px;color:#63d2ff;font-weight:800;letter-spacing:0.05em;margin-top:-2px;line-height:1;">NOW</div>` : "";
     const timeLabel = document.createElement("div");
     timeLabel.style.cssText = `
-      font-size:11px;
+      font-size:${timeLabelSize};
+      font-weight:${timeLabelWeight};
       color:${timeLabelColor};
       width:42px;
       flex-shrink:0;
-      padding:6px 4px 0 4px;
+      padding:4px 4px 0 4px;
       text-align:center;
-      line-height:1.2;
+      line-height:1.1;
       box-sizing:border-box;
       border-right:1px solid rgba(255,255,255,0.03);
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
     `;
-    timeLabel.innerHTML = slot + (isCurrentSlot ? `<br>${nowBadge}` : "");
+    timeLabel.innerHTML = `<div>${slot}</div>${nowBadge}`;
 
     // コンテンツ領域
     const contentDiv = document.createElement("div");
     contentDiv.style.cssText = "flex-grow:1;min-width:0;display:flex;flex-direction:column;justify-content:center;height:100%;box-sizing:border-box;position:relative;z-index:2;";
 
     if (hasSchedule) {
-      // スケジュールが被っている場合は、ドラッグ＆ドロップは不可、コンテンツ領域は空にして、上から絶対配置のスケジュールを重ねる
+      // スケジュール被り
     } else {
       freeMinutes += 30;
       if (assignedTasks.length) {
@@ -682,7 +705,7 @@ function renderTimeline() {
         });
       } else {
         if (!isPastSlot) {
-          contentDiv.innerHTML = `<div style="padding:4px 8px;font-size:10px;color:rgba(255,255,255,0.12);font-style:italic;user-select:none;">ここにタスクをドロップ</div>`;
+          contentDiv.innerHTML = `<div style="padding:2px 8px;font-size:9.5px;color:rgba(255,255,255,0.12);font-style:italic;user-select:none;">ここにタスクをドロップ</div>`;
         }
       }
     }
@@ -770,9 +793,8 @@ function renderTimeline() {
   // 各予定要素を個別にインナーコンテナに配置（透明な全体overlayを排除することで空き時間のマウスイベントを邪魔しない）
   dayScheds.forEach(s => {
     const duration = s._endMin - s._startMin;
-    // 9:00基準 (540分)。30分あたり48px (1分あたり1.6px)
-    const topPx = (s._startMin - 540) * 1.6;
-    const heightPx = duration * 1.6;
+    const topPx = (s._startMin - 540) * minRatio;
+    const heightPx = duration * minRatio;
 
     const colWidthPercent = 100 / s._totalCols;
     const leftPercent = s._colIndex * colWidthPercent;
