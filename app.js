@@ -706,20 +706,21 @@ function renderTimeline() {
     el.appendChild(row);
   });
 
-  // 2. スケジュールを絶対配置で重ねる
+  // 2. スケジュールを絶対配置で重ねる (破壊的変更を防ぐためシャローコピーしてローカルプロパティを付与)
   const dayScheds = scheds.filter(s => {
     if (s.allday) return false;
     const start = parseTime(s.startTime);
     const end = parseTime(s.endTime);
     // 9:00 (540分) 〜 21:00 (1260分) の間に重なるスケジュール
     return start < 1260 && end > 540;
-  });
-
-  dayScheds.forEach(s => {
+  }).map(s => {
     const rawStart = parseTime(s.startTime);
     const rawEnd = parseTime(s.endTime);
-    s._startMin = Math.max(540, rawStart);
-    s._endMin = Math.min(1260, rawEnd);
+    return {
+      ...s,
+      _startMin: Math.max(540, rawStart),
+      _endMin: Math.min(1260, rawEnd)
+    };
   });
 
   dayScheds.sort((a, b) => a._startMin - b._startMin);
@@ -769,10 +770,11 @@ function renderTimeline() {
     position: absolute;
     top: 0;
     left: 42px; /* 時刻ラベルの幅 */
-    right: 0;
+    width: calc(100% - 42px);
     height: ${24 * slotHeight}px;
     pointer-events: none;
     z-index: 10;
+    box-sizing: border-box;
   `;
 
   dayScheds.forEach(s => {
