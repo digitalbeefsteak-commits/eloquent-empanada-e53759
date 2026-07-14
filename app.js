@@ -478,6 +478,160 @@ const DEFAULT_SCHEDULES = [
     "allday": false,
     "desc": "会議室Cにて開発パートナー会社と接続。",
     "isGaroon": true
+  },
+  {
+    "id": "sch-3",
+    "title": "ローカライズ会社A社キックオフ",
+    "startDate": "2026-07-13",
+    "startTime": "11:00",
+    "endDate": "2026-07-13",
+    "endTime": "12:00",
+    "allday": false,
+    "desc": "Teamsオンライン会議。Cosmicの多言語翻訳について。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-4",
+    "title": "投資委員会提出プレゼンプレビュー",
+    "startDate": "2026-07-13",
+    "startTime": "14:00",
+    "endDate": "2026-07-13",
+    "endTime": "15:30",
+    "allday": false,
+    "desc": "A会議室。プロトタイプのクオリティ確認とPL説明リハーサル。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-5",
+    "title": "Cosmic 開発週次定例",
+    "startDate": "2026-07-14",
+    "startTime": "10:00",
+    "endDate": "2026-07-14",
+    "endTime": "11:00",
+    "allday": false,
+    "desc": "会議室A。今週のスプリント課題確認。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-6",
+    "title": "【外部同期】定例進捗報告",
+    "startDate": "2026-07-14",
+    "startTime": "11:00",
+    "endDate": "2026-07-14",
+    "endTime": "11:30",
+    "allday": false,
+    "desc": "進捗の確認とトリアージ。",
+    "isGaroon": true
+  },
+  {
+    "id": "sch-7",
+    "title": "打合せ:支援部定例",
+    "startDate": "2026-07-14",
+    "startTime": "11:30",
+    "endDate": "2026-07-14",
+    "endTime": "12:00",
+    "allday": false,
+    "desc": "インディーゲームパブリッシング支援についての調整。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-8",
+    "title": "外出:デンツウゲームセンター（12:06品川シーサイド発）",
+    "startDate": "2026-07-14",
+    "startTime": "12:00",
+    "endDate": "2026-07-14",
+    "endTime": "18:00",
+    "allday": false,
+    "desc": "テストプレイセンターへ実機動作確認のため出張。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-9",
+    "title": "社内会議:開発計数会議",
+    "startDate": "2026-07-14",
+    "startTime": "14:00",
+    "endDate": "2026-07-14",
+    "endTime": "15:00",
+    "allday": false,
+    "desc": "下半期の予算シミュレーションについて。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-10",
+    "title": "社内会議:【Cosmic】社内定例",
+    "startDate": "2026-07-14",
+    "startTime": "16:00",
+    "endDate": "2026-07-14",
+    "endTime": "17:00",
+    "allday": false,
+    "desc": "進捗状況の共有とタスクの棚卸し。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-11",
+    "title": "【イベント】BitSummit 2026 出張",
+    "startDate": "2026-07-15",
+    "startTime": "00:00",
+    "endDate": "2026-07-17",
+    "endTime": "23:59",
+    "allday": true,
+    "desc": "京都出張。インディーゲーム開発者の発掘と面談。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-12",
+    "title": "プラットフォーマーA社 個別面談",
+    "startDate": "2026-07-15",
+    "startTime": "10:00",
+    "endDate": "2026-07-15",
+    "endTime": "12:00",
+    "allday": false,
+    "desc": "BitSummit会場内のブースにて。インディー支援タイトルのフィーチャー交渉。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-13",
+    "title": "外部有名クリエイター協業プロトタイプ評価",
+    "startDate": "2026-07-15",
+    "startTime": "16:00",
+    "endDate": "2026-07-15",
+    "endTime": "17:00",
+    "allday": false,
+    "desc": "プロトタイプ第1弾のプレイフィードバック会。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-14",
+    "title": "【外部同期】経営役員会向けCosmic進捗報告",
+    "startDate": "2026-07-16",
+    "startTime": "13:00",
+    "endDate": "2026-07-16",
+    "endTime": "14:00",
+    "allday": false,
+    "desc": "役員会議室A。進捗マイルストーンおよび予算報告。",
+    "isGaroon": true
+  },
+  {
+    "id": "sch-15",
+    "title": "1on1 (メンバーA)",
+    "startDate": "2026-07-16",
+    "startTime": "15:00",
+    "endDate": "2026-07-16",
+    "endTime": "15:30",
+    "allday": false,
+    "desc": "週次の進捗面談とキャリア面談。",
+    "isGaroon": false
+  },
+  {
+    "id": "sch-16",
+    "title": "【外部同期】StarQuest 外部開発週次進捗報告",
+    "startDate": "2026-07-17",
+    "startTime": "16:30",
+    "endDate": "2026-07-17",
+    "endTime": "17:30",
+    "allday": false,
+    "desc": "オンライン接続。マスター承認前のQAバグ修正状況確認。",
+    "isGaroon": true
   }
 ];
 
