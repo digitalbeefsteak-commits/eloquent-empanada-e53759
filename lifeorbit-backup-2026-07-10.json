@@ -2,8 +2,8 @@
   "goals": [
     {
       "id": "goal-life",
-      "title": "Project LIFEの開発・ローンチ",
-      "shortName": "LIFE",
+      "title": "Project Cosmicの開発・ローンチ",
+      "shortName": "Cosmic",
       "metric": "Steam評価75%以上、年度内販売30万本達成",
       "tag": "life",
       "color": "#3b82f6",
@@ -15,8 +15,8 @@
     },
     {
       "id": "goal-ninpri",
-      "title": "NinPriR開発・ローンチ",
-      "shortName": "NinPriR",
+      "title": "StarQuest開発・ローンチ",
+      "shortName": "StarQuest",
       "metric": "指標: Steam評価80%以上、年度内販売40万本達成",
       "tag": "ninpri",
       "color": "#f59e0b",
@@ -30,7 +30,7 @@
       "id": "goal-indie",
       "title": "【インディー支援】支援インディーゲーム3タイトルのパブリッシング",
       "shortName": "Indies",
-      "metric": "Marshal/Gray/Chopの年内発売、または発売日確定",
+      "metric": "Astro/Nebula/Cometの年内発売、または発売日確定",
       "tag": "indie",
       "color": "var(--color-indie)",
       "tagClass": "goal-tag-indie",
@@ -100,7 +100,7 @@
     },
     {
       "id": "task-8",
-      "title": "インディータイトル『Marshal』のパブリッシング契約書捺印手続き",
+      "title": "インディータイトル『Astro』のパブリッシング契約書捺印手続き",
       "goalId": "goal-indie",
       "priority": "high",
       "status": "completed",
@@ -111,7 +111,7 @@
     },
     {
       "id": "task-9",
-      "title": "『Gray』開発マイルストーンチェック（β版確認）",
+      "title": "『Nebula』開発マイルストーンチェック（β版確認）",
       "goalId": "goal-indie",
       "priority": "medium",
       "status": "this_week",
@@ -122,7 +122,7 @@
     },
     {
       "id": "task-10",
-      "title": "『Chop』の発売日決定に向けたプラットフォーム調整",
+      "title": "『Comet』の発売日決定に向けたプラットフォーム調整",
       "goalId": "goal-indie",
       "priority": "high",
       "status": "next_week_and_later",
@@ -378,7 +378,7 @@
     },
     {
       "id": "task-3",
-      "title": "LIFE PVファーストカットのディレクターズチェック",
+      "title": "Cosmic PVファーストカットのディレクターズチェック",
       "goalId": "goal-life",
       "priority": "medium",
       "status": "next_week_and_later",
@@ -426,7 +426,7 @@
   "schedules": [
     {
       "id": "sch-1",
-      "title": "プロジェクト『LIFE』定例進捗会議",
+      "title": "プロジェクト『Cosmic』定例進捗会議",
       "startDate": "2026-07-10",
       "startTime": "10:00",
       "endDate": "2026-07-10",
@@ -448,7 +448,7 @@
     },
     {
       "id": "sch-g1",
-      "title": "【Garoon】経営役員会向けLIFE進捗報告",
+      "title": "【外部同期】Cosmic進捗報告",
       "startDate": "2026-07-10",
       "startTime": "13:00",
       "endDate": "2026-07-10",
@@ -459,7 +459,7 @@
     },
     {
       "id": "sch-g2",
-      "title": "【Garoon】NinPriR 外部開発週次進捗報告",
+      "title": "【外部同期】StarQuest 外部開発週次進捗報告",
       "startDate": "2026-07-10",
       "startTime": "16:30",
       "endDate": "2026-07-10",
