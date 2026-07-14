@@ -565,8 +565,11 @@ function renderTimeline() {
   // 1. スロット行の描画 (9:00 から 20:30 までの30分刻み、計24スロット)
   const slotHeight = 48; // 各スロットの高さ (px)
   
-  // 親コンテナのスタイル設定
-  el.style.position = "relative";
+  // スクリューバグ対策・絶対配置の親とするためのインナーコンテナを作成
+  const inner = document.createElement("div");
+  inner.id = "timeline-scroll-inner";
+  inner.style.cssText = "position:relative;width:100%;box-sizing:border-box;";
+  el.appendChild(inner);
   
   // スロット定義
   const slots = [];
@@ -703,7 +706,7 @@ function renderTimeline() {
 
     row.appendChild(timeLabel);
     row.appendChild(contentDiv);
-    el.appendChild(row);
+    inner.appendChild(row);
   });
 
   // 2. スケジュールを絶対配置で重ねる (破壊的変更を防ぐためシャローコピーしてローカルプロパティを付与)
@@ -764,19 +767,7 @@ function renderTimeline() {
     });
   });
 
-  // スケジュール表示用の絶対配置コンテナ
-  const overlay = document.createElement("div");
-  overlay.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 42px; /* 時刻ラベルの幅 */
-    width: calc(100% - 42px);
-    height: ${24 * slotHeight}px;
-    pointer-events: none;
-    z-index: 10;
-    box-sizing: border-box;
-  `;
-
+  // 各予定要素を個別にインナーコンテナに配置（透明な全体overlayを排除することで空き時間のマウスイベントを邪魔しない）
   dayScheds.forEach(s => {
     const duration = s._endMin - s._startMin;
     // 9:00基準 (540分)。30分あたり48px (1分あたり1.6px)
@@ -790,11 +781,12 @@ function renderTimeline() {
     const bg = s.isExternal ? "rgba(168,85,247,0.75)" : "rgba(59,130,246,0.75)";
     const border = s.isExternal ? "1px solid rgba(168,85,247,0.9)" : "1px solid rgba(59,130,246,0.9)";
 
+    // leftとwidthの計算式に左側時刻ラベルの幅(42px)のオフセットを正確に組み込む
     eventEl.style.cssText = `
       position:absolute;
       top:${topPx}px;
-      left:calc(${leftPercent}% + 2px);
-      width:calc(${colWidthPercent}% - 4px);
+      left:calc(42px + (100% - 42px) * ${leftPercent / 100} + 2px);
+      width:calc((100% - 42px) * ${colWidthPercent / 100} - 4px);
       height:${Math.max(18, heightPx - 2)}px;
       background:${bg};
       border:${border};
@@ -821,10 +813,8 @@ function renderTimeline() {
       <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.title}</div>
       <div style="font-size:9.5px;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.startTime}–${s.endTime}</div>
     `;
-    overlay.appendChild(eventEl);
+    inner.appendChild(eventEl);
   });
-
-  el.appendChild(overlay);
 
   const badge = document.getElementById("free-time-badge");
   if (badge) badge.textContent = `空き時間: 約${Math.round(freeMinutes/60)}時間`;
