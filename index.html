@@ -63,6 +63,10 @@
           <i data-lucide="clipboard-check"></i>
           <span>レビュー</span>
         </button>
+        <button class="nav-item" data-view="notes" id="nav-notes">
+          <i data-lucide="notebook-pen"></i>
+          <span>メモ (Notes)</span>
+        </button>
         <button class="nav-item" data-view="settings" id="nav-settings">
           <i data-lucide="settings"></i>
           <span>設定・バックアップ</span>
@@ -82,7 +86,7 @@
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.0.5</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.0.6</div>
       </div>
     </aside>
 
@@ -390,6 +394,78 @@
                     <!-- 未完了タスク一覧 -->
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- メモの振り返りセクション -->
+          <div class="card glass review-notes-section" style="margin-top: 16px;">
+            <div class="card-header">
+              <div class="header-left">
+                <i data-lucide="notebook-pen" class="text-violet" style="color:#a855f7;"></i>
+                <h2>この期間に残したメモ (Notes)</h2>
+              </div>
+            </div>
+            <div class="card-body" id="review-weekly-notes-container" style="padding: 16px;">
+              <!-- メモ一覧が動的に描画されます -->
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: メモ (Notes) -->
+        <section id="view-notes" class="view-section">
+          <div class="notes-container">
+            <!-- 左側: リスト＆検索 -->
+            <div class="notes-sidebar">
+              <div class="notes-search-wrapper">
+                <i data-lucide="search" class="search-icon" style="width:14px;height:14px;position:absolute;left:10px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.35);"></i>
+                <input type="search" id="notes-search-input" placeholder="メモを検索..." style="width:100%;padding:8px 12px 8px 30px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;font-size:12px;outline:none;">
+              </div>
+              <button class="btn btn-sm btn-accent" id="btn-new-note" style="width: 100%; margin-bottom: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="plus" style="width:14px;height:14px;"></i> 新規メモ作成
+              </button>
+              <div class="notes-list" id="notes-list-container" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex-grow:1;max-height:calc(100vh - 250px);">
+                <!-- 動的にリストアイテムを挿入 -->
+              </div>
+            </div>
+            
+            <!-- 右側: エディタ -->
+            <div class="notes-editor-panel glass">
+              <div class="editor-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:12px;">
+                <div class="editor-date-selector" style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:12px;color:rgba(255,255,255,0.5);">対象日付:</span>
+                  <input type="date" id="note-date" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;padding:4px 8px;font-size:12px;outline:none;cursor:pointer;">
+                </div>
+                <input type="hidden" id="note-id">
+              </div>
+              
+              <div class="editor-body" style="flex-grow:1;display:flex;flex-direction:column;margin-bottom:16px;">
+                <textarea id="note-textarea" placeholder="今日の気づきやアイデア、タスクのログなどを自由に書き散らしましょう...&#10;(1行目がタイトルになります)" style="width:100%;height:100%;min-height:300px;background:transparent;border:none;resize:none;color:#fff;font-size:13.5px;line-height:1.6;outline:none;font-family:inherit;padding:4px;"></textarea>
+              </div>
+              
+              <!-- 関連タスク/スケジュール -->
+              <div class="editor-relations-panel" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:12px 14px;margin-top:auto;">
+                <h3 style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.6);margin-top:0;margin-bottom:10px;display:flex;align-items:center;gap:4px;">
+                  <i data-lucide="link-2" style="width:13px;height:13px;"></i> 紐づくタスク / 予定
+                </h3>
+                <div class="relations-container">
+                  <div class="relations-list" id="note-relations-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                    <!-- 紐づくバッジ -->
+                  </div>
+                  <div class="relations-buttons" style="display:flex;gap:8px;">
+                    <button class="btn btn-xs btn-outline" id="btn-relate-task" style="cursor:pointer;font-size:10px;padding:3px 8px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border-radius:4px;">
+                      <i data-lucide="plus" style="width:11px;height:11px;"></i> タスクを紐づけ
+                    </button>
+                    <button class="btn btn-xs btn-outline" id="btn-relate-schedule" style="cursor:pointer;font-size:10px;padding:3px 8px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border-radius:4px;">
+                      <i data-lucide="plus" style="width:11px;height:11px;"></i> 予定を紐づけ
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="editor-footer" style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
+                <button class="btn btn-danger btn-sm" id="btn-delete-note" style="cursor:pointer;display:flex;align-items:center;gap:4px;"><i data-lucide="trash-2" style="width:13px;height:13px;"></i> 削除</button>
+                <button class="btn btn-accent btn-sm" id="btn-save-note" style="cursor:pointer;display:flex;align-items:center;gap:4px;"><i data-lucide="save" style="width:13px;height:13px;"></i> 保存</button>
               </div>
             </div>
           </div>
@@ -778,11 +854,30 @@
       document.body.appendChild(errDiv);
     });
   </script>
+  <!-- タスク・スケジュール関連付けモーダル -->
+  <div class="modal-overlay" id="modal-note-relation" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+    <div class="modal glass" style="max-width:420px;width:90%;background:rgba(20,22,28,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 id="relation-modal-title" style="font-size:15px;font-weight:700;margin:0;">紐づける項目の選択</h2>
+        <button class="btn-close-modal" id="btn-close-relation" style="background:transparent;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height: 280px; overflow-y: auto; margin-bottom: 20px; padding-right: 4px;">
+        <div id="relation-items-list" style="display:flex;flex-direction:column;gap:8px;">
+          <!-- 動的にタスクやスケジュールの選択ラジオ/チェックボックスを表示 -->
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">
+        <button class="btn btn-sm" id="btn-cancel-relation" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:12px;padding:6px 12px;border-radius:6px;">キャンセル</button>
+        <button class="btn btn-sm btn-accent" id="btn-confirm-relation" style="cursor:pointer;font-size:12px;padding:6px 14px;border-radius:6px;display:flex;align-items:center;gap:4px;"><i data-lucide="check" style="width:13px;height:13px;"></i> 紐づける</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase SDK Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- JavaScript -->
-  <script src="app.js?v=1.0.2"></script>
+  <script src="app.js?v=1.0.6"></script>
 </body>
 </html>

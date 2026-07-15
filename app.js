@@ -639,6 +639,7 @@ let appState = {
   goals: [],
   tasks: [],
   schedules: [],
+  notes: [],
   currentDate: new Date(),
   viewDate: new Date(),
   lastSyncTime: null,
@@ -671,6 +672,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadData();
     setupUI();
     setupEventListeners();
+    initNotesView();
     initFirebase();
     renderAll();
     startClock();
@@ -695,6 +697,7 @@ function loadData() {
       appState.goals = parsed.goals && parsed.goals.length ? parsed.goals : JSON.parse(JSON.stringify(DEFAULT_GOALS));
       appState.tasks = parsed.tasks && parsed.tasks.length ? parsed.tasks : JSON.parse(JSON.stringify(DEFAULT_TASKS));
       appState.schedules = parsed.schedules && parsed.schedules.length ? parsed.schedules : JSON.parse(JSON.stringify(DEFAULT_SCHEDULES));
+      appState.notes = parsed.notes || [];
       appState.lastSyncTime = parsed.lastSyncTime || null;
       // shortName が古いデータに無ければマージ
       appState.goals.forEach(g => {
@@ -726,6 +729,7 @@ function saveData() {
     goals: appState.goals,
     tasks: appState.tasks,
     schedules: appState.schedules,
+    notes: appState.notes,
     lastSyncTime: appState.lastSyncTime
   }));
   syncDataToFirebase();
@@ -735,6 +739,7 @@ function resetToDefault() {
   appState.goals = JSON.parse(JSON.stringify(DEFAULT_GOALS));
   appState.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
   appState.schedules = JSON.parse(JSON.stringify(DEFAULT_SCHEDULES));
+  appState.notes = [];
   appState.lastSyncTime = "2026-07-10T09:00:00+09:00";
   saveData();
 }
@@ -985,6 +990,7 @@ function renderAll() {
   renderGoalsPage();
   renderKanban();
   renderCalendar();
+  renderNotes();
   renderReviewPage();
   updateGoalDropdowns();
   updateSyncDisplay();
@@ -1817,7 +1823,7 @@ function renderCalendar() {
     for (let d = 0; d < 7; d++) {
       const idx = week*7+d;
       const cell = document.createElement("div");
-      cell.style.cssText = "border:1px solid rgba(255,255,255,0.05);padding:4px;min-height:80px;vertical-align:top;";
+      cell.style.cssText = "border:1px solid rgba(255,255,255,0.05);padding:4px;min-height:80px;vertical-align:top;position:relative;";
       let dateStr = "", isOther = false, displayDay = 0;
       if (idx < firstDay) {
         displayDay = daysInPrev - firstDay + idx + 1;
@@ -1857,6 +1863,7 @@ function renderCalendar() {
         el.onclick = () => openEditTaskModal(t.id);
         cell.appendChild(el);
       });
+      addNoteIndicatorToCalendarCell(dateStr, cell);
       grid.appendChild(cell);
     }
     if (dayNum > daysInMonth && nextDay > 1) break;
@@ -1911,11 +1918,12 @@ function renderWeekView() {
     const isToday = dateStr === todayStr;
     const dayCell = document.createElement("div");
     dayCell.className = "week-header-day" + (isToday ? " today" : "");
-    dayCell.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:4px;gap:2px;flex-grow:1;min-width:0;";
+    dayCell.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:4px;gap:2px;flex-grow:1;min-width:0;position:relative;";
     dayCell.innerHTML = `
       <span style="font-size:10px;color:rgba(255,255,255,0.4);">${dayNames[i]}</span>
       <span style="font-size:14px;font-weight:700;color:${isToday?"var(--accent)":"rgba(255,255,255,0.85)"};">${curDate.getDate()}</span>
     `;
+    addNoteIndicatorToCalendarCell(dateStr, dayCell);
     header.appendChild(dayCell);
   }
 
@@ -2488,7 +2496,12 @@ function handleICSImport(file) {
 
 // データエクスポート
 function exportData() {
-  const json = JSON.stringify({ goals: appState.goals, tasks: appState.tasks, schedules: appState.schedules }, null, 2);
+  const json = JSON.stringify({
+    goals: appState.goals,
+    tasks: appState.tasks,
+    schedules: appState.schedules,
+    notes: appState.notes
+  }, null, 2);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
   a.download = `lifeorbit-backup-${formatDate(new Date())}.json`;
@@ -2504,6 +2517,7 @@ function importData(file) {
       if (data.goals) appState.goals = data.goals;
       if (data.tasks) appState.tasks = data.tasks;
       if (data.schedules) appState.schedules = data.schedules;
+      appState.notes = data.notes || [];
       saveData();
       renderAll();
       alert("データをインポートしました。");
@@ -2527,6 +2541,7 @@ function importDataFromText() {
     if (data.goals) appState.goals = data.goals;
     if (data.tasks) appState.tasks = data.tasks;
     if (data.schedules) appState.schedules = data.schedules;
+    appState.notes = data.notes || [];
     saveData();
     renderAll();
     alert("データをインポートしました。");
@@ -2569,6 +2584,8 @@ function switchView(viewName) {
     renderGoalsPage();
   } else if (viewName === "tasks") {
     renderKanban();
+  } else if (viewName === "notes") {
+    renderNotes();
   }
 
   // nav-item の active 切り替え
@@ -2582,8 +2599,8 @@ function switchView(viewName) {
     else sec.classList.remove("active");
   });
   // ヘッダータイトル更新
-  const titles = { dashboard: "ダッシュボード", goals: "目標 (Goals)", tasks: "タスク (Tasks)", calendar: "カレンダー", review: "レビュー", settings: "設定・バックアップ" };
-  const subs = { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "タスクのカンバン管理", calendar: "スケジュールとカレンダー連携", review: "活動実績の振り返りと未完了タスクの棚卸し", settings: "データの管理とバックアップ" };
+  const titles = { dashboard: "ダッシュボード", goals: "目標 (Goals)", tasks: "タスク (Tasks)", calendar: "カレンダー", review: "レビュー", notes: "メモ (Notes)", settings: "設定・バックアップ" };
+  const subs = { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "タスクのカンバン管理", calendar: "スケジュールとカレンダー連携", review: "活動実績の振り返りと未完了タスクの棚卸し", notes: "日々のログや気づきの書き散らしと管理", settings: "データの管理とバックアップ" };
   const titleEl = document.getElementById("view-title");
   if (titleEl) titleEl.textContent = titles[viewName] || viewName;
   if (subEl) subEl.textContent = subs[viewName] || "";
@@ -3242,6 +3259,9 @@ function renderReviewPage() {
       if (window.lucide) window.lucide.createIcons();
     }
   }
+
+  // 期間中に残したメモを一覧描画
+  renderWeeklyNotesForReview(startStr, endStr);
 }
 
 // レビューモード切り替え
@@ -3572,10 +3592,11 @@ function loadFirebaseData(syncKey) {
         } catch (e) {}
       }
 
-      if (shouldUpdate && (data.goals || data.tasks || data.schedules)) {
+      if (shouldUpdate && (data.goals || data.tasks || data.schedules || data.notes)) {
         appState.goals = data.goals || [];
         appState.tasks = data.tasks || [];
         appState.schedules = data.schedules || [];
+        appState.notes = data.notes || [];
         appState.lastSyncTime = data.lastSyncTime || null;
         
         localStorage.setItem("lifeorbit_data", JSON.stringify(data));
@@ -3601,6 +3622,7 @@ function syncDataToFirebase() {
     goals: appState.goals,
     tasks: appState.tasks,
     schedules: appState.schedules,
+    notes: appState.notes,
     lastSyncTime: appState.lastSyncTime
   })
   .then(() => {
@@ -3623,13 +3645,14 @@ function deployDataToFirebase() {
     return;
   }
 
-  if (confirm("【警告】現在画面上に表示されているローカルのデータ（目標・タスク・スケジュール）で、この合言葉のオンラインデータベースを完全に上書きデプロイします。よろしいですか？")) {
+  if (confirm("【警告】現在画面上に表示されているローカルのデータ（目標・タスク・スケジュール・メモ）で、この合言葉のオンラインデータベースを完全に上書きデプロイします。よろしいですか？")) {
     appState.lastSyncTime = new Date().toISOString();
     
     localStorage.setItem("lifeorbit_data", JSON.stringify({
       goals: appState.goals,
       tasks: appState.tasks,
       schedules: appState.schedules,
+      notes: appState.notes,
       lastSyncTime: appState.lastSyncTime
     }));
 
@@ -3637,6 +3660,7 @@ function deployDataToFirebase() {
       goals: appState.goals,
       tasks: appState.tasks,
       schedules: appState.schedules,
+      notes: appState.notes,
       lastSyncTime: appState.lastSyncTime
     })
     .then(() => {
@@ -3722,4 +3746,451 @@ window.syncDataToFirebase = syncDataToFirebase;
 window.resetDataCategory = resetDataCategory;
 window.updateHeaderSyncStatus = updateHeaderSyncStatus;
 window.deployDataToFirebase = deployDataToFirebase;
+
+// ==========================================================================
+// NOTES CORE LOGIC
+// ==========================================================================
+
+let activeNoteId = null;
+let currentRelationType = null; // 'task' or 'schedule'
+let pendingRelations = { taskIds: [], scheduleIds: [] };
+
+function initNotesView() {
+  const searchInput = document.getElementById("notes-search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", renderNotes);
+  }
+
+  const btnNewNote = document.getElementById("btn-new-note");
+  if (btnNewNote) {
+    btnNewNote.addEventListener("click", createNewNote);
+  }
+
+  const btnSaveNote = document.getElementById("btn-save-note");
+  if (btnSaveNote) {
+    btnSaveNote.addEventListener("click", saveActiveNote);
+  }
+
+  const btnDeleteNote = document.getElementById("btn-delete-note");
+  if (btnDeleteNote) {
+    btnDeleteNote.addEventListener("click", deleteActiveNote);
+  }
+
+  const btnRelateTask = document.getElementById("btn-relate-task");
+  if (btnRelateTask) {
+    btnRelateTask.addEventListener("click", () => openRelationModal("task"));
+  }
+
+  const btnRelateSchedule = document.getElementById("btn-relate-schedule");
+  if (btnRelateSchedule) {
+    btnRelateSchedule.addEventListener("click", () => openRelationModal("schedule"));
+  }
+
+  const btnCloseRelation = document.getElementById("btn-close-relation");
+  if (btnCloseRelation) {
+    btnCloseRelation.addEventListener("click", closeRelationModal);
+  }
+  const btnCancelRelation = document.getElementById("btn-cancel-relation");
+  if (btnCancelRelation) {
+    btnCancelRelation.addEventListener("click", closeRelationModal);
+  }
+
+  const btnConfirmRelation = document.getElementById("btn-confirm-relation");
+  if (btnConfirmRelation) {
+    btnConfirmRelation.addEventListener("click", confirmRelationSelection);
+  }
+
+  // 初期状態で今日の日付をセット
+  const dateInput = document.getElementById("note-date");
+  if (dateInput && !dateInput.value) {
+    dateInput.value = formatDate(appState.currentDate);
+  }
+}
+
+function renderNotes() {
+  const container = document.getElementById("notes-list-container");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const query = (document.getElementById("notes-search-input")?.value || "").toLowerCase().trim();
+
+  // 検索クエリで絞り込み
+  const filteredNotes = appState.notes.filter(note => {
+    if (!query) return true;
+    
+    // 日付・本文検索
+    if (note.date.includes(query) || note.content.toLowerCase().includes(query)) return true;
+
+    // 関連タスクのタイトルで検索
+    const matchTask = note.taskIds?.some(tid => {
+      const t = appState.tasks.find(tk => tk.id === tid);
+      return t && t.title.toLowerCase().includes(query);
+    });
+    if (matchTask) return true;
+
+    // 関連予定のタイトルで検索
+    const matchSch = note.scheduleIds?.some(sid => {
+      const s = appState.schedules.find(sc => sc.id === sid);
+      return s && s.title.toLowerCase().includes(query);
+    });
+    if (matchSch) return true;
+
+    return false;
+  });
+
+  // 日付の降順でソート
+  filteredNotes.sort((a, b) => b.date.localeCompare(a.date));
+
+  if (filteredNotes.length === 0) {
+    container.innerHTML = `<div style="padding:16px;text-align:center;font-size:11.5px;color:rgba(255,255,255,0.25);font-style:italic;">メモが見つかりません</div>`;
+    return;
+  }
+
+  filteredNotes.forEach(note => {
+    const lines = note.content.trim().split("\n");
+    const title = lines[0] || "無題のメモ";
+    const preview = lines.slice(1).join(" ") || "本文なし";
+    
+    const item = document.createElement("div");
+    item.className = `note-item ${activeNoteId === note.id ? "active" : ""}`;
+    item.addEventListener("click", () => selectNote(note.id));
+
+    const totalRelations = (note.taskIds?.length || 0) + (note.scheduleIds?.length || 0);
+    const badgeHTML = totalRelations > 0 ? `<div class="note-item-badges"><i data-lucide="link-2" style="width:11px;height:11px;"></i> <span style="font-size:9.5px;font-weight:600;">${totalRelations}</span></div>` : "";
+
+    item.innerHTML = `
+      <div class="note-item-header">
+        <span class="note-item-date">${formatDateDisplay(note.date)}</span>
+        ${badgeHTML}
+      </div>
+      <div class="note-item-title">${title}</div>
+      <div class="note-item-preview">${preview}</div>
+    `;
+    container.appendChild(item);
+  });
+
+  // Lucideアイコンの再描画
+  if (window.lucide) lucide.createIcons();
+}
+
+function selectNote(noteId) {
+  activeNoteId = noteId;
+  const note = appState.notes.find(n => n.id === noteId);
+  if (!note) return;
+
+  const dateInput = document.getElementById("note-date");
+  const textarea = document.getElementById("note-textarea");
+  const hiddenId = document.getElementById("note-id");
+
+  if (dateInput) dateInput.value = note.date;
+  if (textarea) textarea.value = note.content;
+  if (hiddenId) hiddenId.value = note.id;
+
+  pendingRelations.taskIds = [...(note.taskIds || [])];
+  pendingRelations.scheduleIds = [...(note.scheduleIds || [])];
+
+  renderRelations();
+  renderNotes(); // リスト側のアクティブ状態表示の更新
+}
+
+function createNewNote() {
+  activeNoteId = "new-" + Math.random().toString(36).substr(2, 9);
+  
+  const dateInput = document.getElementById("note-date");
+  const textarea = document.getElementById("note-textarea");
+  const hiddenId = document.getElementById("note-id");
+
+  if (dateInput) dateInput.value = formatDate(appState.currentDate);
+  if (textarea) {
+    textarea.value = "";
+    textarea.focus();
+  }
+  if (hiddenId) hiddenId.value = activeNoteId;
+
+  pendingRelations.taskIds = [];
+  pendingRelations.scheduleIds = [];
+
+  renderRelations();
+  renderNotes();
+}
+
+function saveActiveNote() {
+  const dateInput = document.getElementById("note-date");
+  const textarea = document.getElementById("note-textarea");
+  const hiddenId = document.getElementById("note-id");
+
+  if (!textarea || !textarea.value.trim()) {
+    alert("メモ本文を入力してください。");
+    return;
+  }
+  if (!dateInput || !dateInput.value) {
+    alert("日付を入力してください。");
+    return;
+  }
+
+  const id = hiddenId?.value || activeNoteId || ("note-" + Math.random().toString(36).substr(2, 9));
+  const date = dateInput.value;
+  const content = textarea.value;
+
+  let note = appState.notes.find(n => n.id === id);
+  if (note) {
+    note.date = date;
+    note.content = content;
+    note.taskIds = [...pendingRelations.taskIds];
+    note.scheduleIds = [...pendingRelations.scheduleIds];
+    note.updatedAt = new Date().toISOString();
+  } else {
+    // 新規作成
+    note = {
+      id: id.startsWith("new-") ? "note-" + id.substring(4) : id,
+      date,
+      content,
+      taskIds: [...pendingRelations.taskIds],
+      scheduleIds: [...pendingRelations.scheduleIds],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    appState.notes.push(note);
+    activeNoteId = note.id;
+    if (hiddenId) hiddenId.value = note.id;
+  }
+
+  saveData();
+  renderNotes();
+  
+  // カレンダーやレビューを再生成
+  renderCalendar();
+  renderReviewPage();
+
+  alert("メモを保存しました。");
+}
+
+function deleteActiveNote() {
+  const id = document.getElementById("note-id")?.value || activeNoteId;
+  if (!id || id.startsWith("new-")) {
+    createNewNote();
+    return;
+  }
+
+  if (!confirm("このメモを削除しますか？")) return;
+
+  appState.notes = appState.notes.filter(n => n.id !== id);
+  saveData();
+  
+  activeNoteId = null;
+  createNewNote();
+  
+  renderCalendar();
+  renderReviewPage();
+  alert("メモを削除しました。");
+}
+
+function renderRelations() {
+  const container = document.getElementById("note-relations-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  // 関連タスクの描画
+  pendingRelations.taskIds.forEach(tid => {
+    const task = appState.tasks.find(t => t.id === tid);
+    if (!task) return;
+
+    const badge = document.createElement("div");
+    badge.className = "relation-badge task";
+    badge.innerHTML = `
+      <span onclick="openEditTaskModal('${task.id}')">📋 ${task.title}</span>
+      <button class="remove-btn" onclick="removeRelation('task', '${task.id}')">&times;</button>
+    `;
+    container.appendChild(badge);
+  });
+
+  // 関連スケジュールの描画
+  pendingRelations.scheduleIds.forEach(sid => {
+    const sch = appState.schedules.find(s => s.id === sid);
+    if (!sch) return;
+
+    const badge = document.createElement("div");
+    badge.className = "relation-badge schedule";
+    badge.innerHTML = `
+      <span onclick="openEditScheduleModal('${sch.id}')">📅 [${sch.startTime}] ${sch.title}</span>
+      <button class="remove-btn" onclick="removeRelation('schedule', '${sch.id}')">&times;</button>
+    `;
+    container.appendChild(badge);
+  });
+
+  if (pendingRelations.taskIds.length === 0 && pendingRelations.scheduleIds.length === 0) {
+    container.innerHTML = `<span style="font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;">紐づく項目はありません</span>`;
+  }
+}
+
+function removeRelation(type, id) {
+  if (type === "task") {
+    pendingRelations.taskIds = pendingRelations.taskIds.filter(tid => tid !== id);
+  } else {
+    pendingRelations.scheduleIds = pendingRelations.scheduleIds.filter(sid => sid !== id);
+  }
+  renderRelations();
+}
+
+function openRelationModal(type) {
+  currentRelationType = type;
+  const overlay = document.getElementById("modal-note-relation");
+  const title = document.getElementById("relation-modal-title");
+  const listContainer = document.getElementById("relation-items-list");
+
+  if (!overlay || !listContainer) return;
+
+  listContainer.innerHTML = "";
+  overlay.style.display = "flex";
+
+  if (type === "task") {
+    if (title) title.textContent = "紐づけるタスクの選択";
+    
+    // カンバンに表示されているタスクを表示
+    const activeTasks = appState.tasks.filter(t => !t.isMilestone);
+    
+    if (activeTasks.length === 0) {
+      listContainer.innerHTML = `<div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.3);padding:10px;">選択可能なタスクがありません</div>`;
+      return;
+    }
+
+    activeTasks.forEach(task => {
+      const isChecked = pendingRelations.taskIds.includes(task.id) ? "checked" : "";
+      const item = document.createElement("label");
+      item.className = "relation-select-item";
+      item.innerHTML = `
+        <input type="checkbox" name="relation-task-chk" value="${task.id}" ${isChecked}>
+        <span class="relation-select-item-text">[${task.status === 'completed' ? '完了' : '未完了'}] ${task.title}</span>
+      `;
+      listContainer.appendChild(item);
+    });
+  } else {
+    if (title) title.textContent = "紐づける予定（スケジュール）の選択";
+    
+    // スケジュール一覧をソートして表示
+    const sortedSchs = [...appState.schedules].sort((a, b) => b.startDate.localeCompare(a.startDate) || a.startTime.localeCompare(b.startTime));
+    
+    if (sortedSchs.length === 0) {
+      listContainer.innerHTML = `<div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.3);padding:10px;">選択可能な予定がありません</div>`;
+      return;
+    }
+
+    sortedSchs.forEach(sch => {
+      const isChecked = pendingRelations.scheduleIds.includes(sch.id) ? "checked" : "";
+      const item = document.createElement("label");
+      item.className = "relation-select-item";
+      item.innerHTML = `
+        <input type="checkbox" name="relation-sch-chk" value="${sch.id}" ${isChecked}>
+        <span class="relation-select-item-text">${formatDateDisplay(sch.startDate)} [${sch.startTime}] ${sch.title}</span>
+      `;
+      listContainer.appendChild(item);
+    });
+  }
+  
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeRelationModal() {
+  const overlay = document.getElementById("modal-note-relation");
+  if (overlay) overlay.style.display = "none";
+}
+
+function confirmRelationSelection() {
+  if (currentRelationType === "task") {
+    const chks = document.querySelectorAll('input[name="relation-task-chk"]:checked');
+    pendingRelations.taskIds = Array.from(chks).map(el => el.value);
+  } else {
+    const chks = document.querySelectorAll('input[name="relation-sch-chk"]:checked');
+    pendingRelations.scheduleIds = Array.from(chks).map(el => el.value);
+  }
+
+  renderRelations();
+  closeRelationModal();
+}
+
+// カレンダーの特定日付セルにメモアイコンを追加するヘルパー
+function addNoteIndicatorToCalendarCell(dayStr, cellEl) {
+  const hasNote = appState.notes.some(n => n.date === dayStr && n.content.trim());
+  if (!hasNote) return;
+
+  const indicator = document.createElement("div");
+  indicator.className = "calendar-note-indicator";
+  indicator.innerHTML = `
+    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 20h9"></path>
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+    </svg>
+  `;
+  
+  const note = appState.notes.find(n => n.date === dayStr);
+  const firstLine = note.content.trim().split("\n")[0] || "メモあり";
+  
+  const tooltip = document.createElement("div");
+  tooltip.className = "note-tooltip";
+  tooltip.innerHTML = `
+    <div class="note-tooltip-date">${formatDateDisplay(dayStr)}</div>
+    <div class="note-tooltip-body">${firstLine}</div>
+  `;
+
+  indicator.addEventListener("click", (e) => {
+    e.stopPropagation();
+    switchView("notes");
+    selectNote(note.id);
+  });
+
+  cellEl.appendChild(indicator);
+  cellEl.appendChild(tooltip);
+}
+
+// レビュー画面用の週次メモ描画処理
+function renderWeeklyNotesForReview(startDateStr, endDateStr) {
+  const container = document.getElementById("review-weekly-notes-container");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const weeklyNotes = appState.notes.filter(n => n.date >= startDateStr && n.date <= endDateStr && n.content.trim());
+  weeklyNotes.sort((a, b) => a.date.localeCompare(b.date));
+
+  if (weeklyNotes.length === 0) {
+    container.innerHTML = `<div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.22);font-style:italic;padding:24px 0;">この期間中に書かれたメモはありません</div>`;
+    return;
+  }
+
+  const list = document.createElement("div");
+  list.className = "review-notes-list";
+
+  weeklyNotes.forEach(note => {
+    const lines = note.content.trim().split("\n");
+    const title = lines[0] || "無題のメモ";
+    const preview = lines.slice(1).join(" ") || "本文なし";
+
+    const card = document.createElement("div");
+    card.className = "review-note-card";
+    card.style.cursor = "pointer";
+    card.addEventListener("click", () => {
+      switchView("notes");
+      selectNote(note.id);
+    });
+
+    card.innerHTML = `
+      <div class="review-note-header">${formatDateDisplay(note.date)}</div>
+      <div class="review-note-title">${title}</div>
+      <div class="review-note-preview">${preview}</div>
+    `;
+    list.appendChild(card);
+  });
+
+  container.appendChild(list);
+}
+
+window.selectNote = selectNote;
+window.createNewNote = createNewNote;
+window.saveActiveNote = saveActiveNote;
+window.deleteActiveNote = deleteActiveNote;
+window.removeRelation = removeRelation;
+window.openRelationModal = openRelationModal;
+window.closeRelationModal = closeRelationModal;
+window.confirmRelationSelection = confirmRelationSelection;
+window.addNoteIndicatorToCalendarCell = addNoteIndicatorToCalendarCell;
+window.renderWeeklyNotesForReview = renderWeeklyNotesForReview;
 
