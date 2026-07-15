@@ -1737,7 +1737,13 @@ function renderKanban() {
 
     card.draggable = true;
     card.dataset.taskId = task.id;
-    card.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", task.id); });
+    card.addEventListener("dragstart", e => {
+      card.classList.add("dragging");
+      e.dataTransfer.setData("text/plain", task.id);
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+    });
     card.addEventListener("click", () => openEditTaskModal(task.id));
     card.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -1757,17 +1763,7 @@ function renderKanban() {
     `;
     col.appendChild(card);
   });
-  // ドロップ
-  Object.entries(colMap).forEach(([status, colId]) => {
-    const colEl = document.getElementById(colId);
-    if (!colEl) return;
-    colEl.addEventListener("dragover", e => e.preventDefault());
-    colEl.addEventListener("drop", e => {
-      e.preventDefault();
-      const taskId = e.dataTransfer.getData("text/plain");
-      if (taskId) updateTaskStatus(taskId, status);
-    });
-  });
+  // ドロップイベントは setupEventListeners() に移動したためここでは登録しない
   // カウント更新
   Object.entries(colMap).forEach(([status, colId]) => {
     const countEl = document.getElementById("count-" + (status === "next_week_and_later" ? "next_week" : status));
@@ -2100,7 +2096,15 @@ function updateTaskStatus(taskId, newStatus) {
   else if (newStatus !== "completed") task.completedAt = null;
   if (newStatus !== "today") task.assignedTimeSlot = null;
   saveData();
-  renderAll();
+  
+  // renderAllの代わりに、カンバンの更新に必要な最小限の描画を実行して劇的に軽量化
+  calcGoalProgress();
+  renderDashboardGoals();
+  renderTodayTasks();
+  renderTimeline();
+  renderKanban();
+  updateGoalDropdowns();
+  updateSyncDisplay();
 }
 
 function toggleTaskCompleted(taskId) {
@@ -2725,6 +2729,35 @@ function setupEventListeners() {
   if (btnWeek) btnWeek.addEventListener("click", () => {
     appState.calendarViewMode = "week";
     renderCalendar();
+  });
+
+  // カンバンのドラッグ&ドロップイベント登録（重複登録防止のため初期化時に1回のみ実行）
+  const kanbanColMap = {
+    "today": "cards-today",
+    "this_week": "cards-this_week",
+    "next_week_and_later": "cards-next_week",
+    "waiting": "cards-waiting",
+    "completed": "cards-completed"
+  };
+  Object.entries(kanbanColMap).forEach(([status, colId]) => {
+    const colEl = document.getElementById(colId);
+    if (!colEl) return;
+    colEl.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    });
+    colEl.addEventListener("dragenter", () => {
+      colEl.classList.add("drag-over");
+    });
+    colEl.addEventListener("dragleave", () => {
+      colEl.classList.remove("drag-over");
+    });
+    colEl.addEventListener("drop", e => {
+      e.preventDefault();
+      colEl.classList.remove("drag-over");
+      const taskId = e.dataTransfer.getData("text/plain");
+      if (taskId) updateTaskStatus(taskId, status);
+    });
   });
 
   // ICS ドラッグ&ドロップ
