@@ -1224,9 +1224,12 @@ function renderTodayTasks() {
     li.addEventListener("drop", e => {
       e.preventDefault();
       li.classList.remove("drag-over-note");
-      const dragType = e.dataTransfer.getData("text/plain");
-      if (dragType === "note-today") {
+      const dragData = e.dataTransfer.getData("text/plain");
+      if (dragData === "note-today") {
         linkTodayNoteToItem("task", task.id);
+      } else if (dragData.startsWith("note-id:")) {
+        const noteId = dragData.replace("note-id:", "");
+        linkNoteToItem(noteId, "task", task.id);
       }
     });
 
@@ -1533,9 +1536,12 @@ function renderTimeline() {
     eventEl.addEventListener("drop", e => {
       e.preventDefault();
       eventEl.classList.remove("drag-over-note");
-      const dragType = e.dataTransfer.getData("text/plain");
-      if (dragType === "note-today") {
+      const dragData = e.dataTransfer.getData("text/plain");
+      if (dragData === "note-today") {
         linkTodayNoteToItem("schedule", s.id);
+      } else if (dragData.startsWith("note-id:")) {
+        const noteId = dragData.replace("note-id:", "");
+        linkNoteToItem(noteId, "schedule", s.id);
       }
     });
 
@@ -4288,103 +4294,154 @@ window.confirmRelationSelection = confirmRelationSelection;
 window.addNoteIndicatorToCalendarCell = addNoteIndicatorToCalendarCell;
 window.renderWeeklyNotesForReview = renderWeeklyNotesForReview;
 
-function initDashboardNote() {
-  const textarea = document.getElementById("dashboard-note-textarea");
-  const dragEl = document.getElementById("dashboard-note-draggable");
-  const dragLabel = document.getElementById("dashboard-note-drag-label");
-  const saveBtn = document.getElementById("btn-save-dashboard-note");
-  if (!textarea) return;
+function renderDashboardStickyNotes() {
+  const container = document.getElementById("dashboard-notes-list");
+  if (!container) return;
 
   const todayStr = formatDate(appState.currentDate);
-  const note = appState.notes.find(n => n.date === todayStr);
+  // 今日の非アーカイブメモを新しい順に表示
+  const todayNotes = appState.notes
+    .filter(n => n.date === todayStr && !n.dashboardArchived)
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
-  if (!textarea.dataset.listenerInitialized) {
-    // 入力中は、保存内容とズレるため一旦ドラッグバッジを非表示にする
-    textarea.addEventListener("input", () => {
-      if (dragEl) dragEl.style.display = "none";
+  container.innerHTML = "";
+
+  if (todayNotes.length === 0) {
+    container.innerHTML = `<div style="text-align:center; color:rgba(255,255,255,0.2); font-size:12px; font-style:italic; padding:24px 0;">メモはまだありません</div>`;
+    return;
+  }
+
+  todayNotes.forEach(note => {
+    const card = document.createElement("div");
+    card.className = "dashboard-sticky-note";
+    card.draggable = true;
+    card.dataset.noteId = note.id;
+
+    const firstLine = note.content.trim().split("\n")[0] || "";
+    const rest = note.content.trim().split("\n").slice(1).join("\n");
+    const timeStr = note.createdAt ? new Date(note.createdAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "";
+
+    // 紐付きアイコン
+    const linkedTask = note.taskIds && note.taskIds.length > 0;
+    const linkedSch  = note.scheduleIds && note.scheduleIds.length > 0;
+    const linkBadge  = (linkedTask || linkedSch)
+      ? `<span style="color:rgba(168,85,247,0.8); font-size:10px;">🔗 紐づき${linkedTask ? " タスク" : ""}${linkedSch ? " 予定" : ""}</span>`
+      : "";
+
+    card.innerHTML = `
+      <div class="sticky-note-content" style="pointer-events:none;">
+        ${firstLine ? `<div style="font-weight:600; margin-bottom:${rest ? "4px" : "0"};">${firstLine}</div>` : ""}
+        ${rest ? `<div style="color:rgba(255,255,255,0.6); font-size:11px;">${rest}</div>` : ""}
+      </div>
+      <div class="sticky-note-meta">
+        <span style="display:flex; align-items:center; gap:6px;">
+          <span>${timeStr}</span>
+          ${linkBadge}
+        </span>
+        <div class="sticky-note-actions">
+          <button class="sticky-note-btn archive" data-id="${note.id}" title="ダッシュボードから非表示">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+            アーカイブ
+          </button>
+          <button class="sticky-note-btn delete" data-id="${note.id}" title="削除">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            削除
+          </button>
+        </div>
+      </div>
+    `;
+
+    // ドラッグ（付箋カード自体をドラッグして紐付け）
+    card.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", "note-id:" + note.id);
+      e.dataTransfer.effectAllowed = "link";
+      card.style.opacity = "0.5";
+    });
+    card.addEventListener("dragend", () => { card.style.opacity = ""; });
+
+    // アーカイブボタン
+    card.querySelector(".archive").addEventListener("click", e => {
+      e.stopPropagation();
+      const n = appState.notes.find(x => x.id === note.id);
+      if (n) {
+        n.dashboardArchived = true;
+        saveData();
+        renderDashboardStickyNotes();
+      }
     });
 
+    // 削除ボタン
+    card.querySelector(".delete").addEventListener("click", e => {
+      e.stopPropagation();
+      if (!confirm("このメモを削除しますか？")) return;
+      appState.notes = appState.notes.filter(x => x.id !== note.id);
+      saveData();
+      renderDashboardStickyNotes();
+      renderCalendar();
+    });
+
+    container.appendChild(card);
+  });
+
+  // Lucide アイコン再初期化
+  if (window.lucide) lucide.createIcons();
+}
+
+function initDashboardNote() {
+  const textarea = document.getElementById("dashboard-note-textarea");
+  const saveBtn  = document.getElementById("btn-save-dashboard-note");
+  if (!textarea) return;
+
+  // イベントリスナーは一度だけバインド
+  if (!textarea.dataset.listenerInitialized) {
     if (saveBtn) {
       saveBtn.addEventListener("click", () => {
-        const content = textarea.value;
+        const content = textarea.value.trim();
+        if (!content) return;
+
         const tStr = formatDate(appState.currentDate);
-        let nObj = appState.notes.find(n => n.date === tStr);
-
-        if (content.trim()) {
-          if (nObj) {
-            nObj.content = content;
-            nObj.updatedAt = new Date().toISOString();
-          } else {
-            nObj = {
-              id: "note-" + Math.random().toString(36).substr(2, 9),
-              date: tStr,
-              content: content,
-              taskIds: [],
-              scheduleIds: [],
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            };
-            appState.notes.push(nObj);
-          }
-          if (dragEl && dragLabel) {
-            dragEl.style.display = "flex";
-            const title = content.trim().split("\n")[0] || "今日のメモ";
-            dragLabel.textContent = `📝 ${title} (ドラッグしてタスク/予定に紐づけ)`;
-          }
-          alert("メモを保存しました。");
-        } else {
-          if (nObj) {
-            appState.notes = appState.notes.filter(n => n.id !== nObj.id);
-          }
-          if (dragEl) dragEl.style.display = "none";
-          alert("メモをクリアしました。");
-        }
-
+        const newNote = {
+          id: "note-" + Math.random().toString(36).substr(2, 9),
+          date: tStr,
+          content,
+          taskIds: [],
+          scheduleIds: [],
+          dashboardArchived: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        appState.notes.push(newNote);
+        textarea.value = "";
         saveData();
+        renderDashboardStickyNotes();
         renderCalendar();
       });
-    }
 
-    if (dragEl) {
-      dragEl.addEventListener("dragstart", (e) => {
-        e.dataTransfer.setData("text/plain", "note-today");
-        e.dataTransfer.effectAllowed = "link";
+      // Ctrl+Enter でも保存
+      textarea.addEventListener("keydown", e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          saveBtn.click();
+        }
       });
     }
 
     textarea.dataset.listenerInitialized = "true";
   }
 
-  // 他端末同期等により変更された値を textarea に反映 (フォーカスしていない時のみ上書き)
-  if (document.activeElement !== textarea) {
-    if (note) {
-      textarea.value = note.content;
-      if (dragEl && dragLabel) {
-        dragEl.style.display = "flex";
-        const title = note.content.trim().split("\n")[0] || "今日のメモ";
-        dragLabel.textContent = `📝 ${title} (ドラッグしてタスク/予定に紐づけ)`;
-      }
-    } else {
-      textarea.value = "";
-      if (dragEl) dragEl.style.display = "none";
-    }
-  }
+  // 付箋カードを描画
+  renderDashboardStickyNotes();
 }
 
-function linkTodayNoteToItem(type, itemId) {
-  const todayStr = formatDate(appState.currentDate);
-  const note = appState.notes.find(n => n.date === todayStr);
-  if (!note) {
-    alert("今日のメモに内容を入力してください。");
-    return;
-  }
+function linkNoteToItem(noteId, type, itemId) {
+  const note = appState.notes.find(n => n.id === noteId);
+  if (!note) return;
 
   if (type === "task") {
     if (!note.taskIds) note.taskIds = [];
     if (!note.taskIds.includes(itemId)) {
       note.taskIds.push(itemId);
       saveData();
-      renderAll();
+      renderDashboardStickyNotes();
       alert("メモをタスクに紐づけました。");
     } else {
       alert("このタスクは既に紐づいています。");
@@ -4394,7 +4451,7 @@ function linkTodayNoteToItem(type, itemId) {
     if (!note.scheduleIds.includes(itemId)) {
       note.scheduleIds.push(itemId);
       saveData();
-      renderAll();
+      renderDashboardStickyNotes();
       alert("メモを予定に紐づけました。");
     } else {
       alert("この予定は既に紐づいています。");
@@ -4402,6 +4459,15 @@ function linkTodayNoteToItem(type, itemId) {
   }
 }
 
+// 後方互換のため旧シグネチャも残す
+function linkTodayNoteToItem(type, itemId) {
+  const todayStr = formatDate(appState.currentDate);
+  const note = appState.notes.find(n => n.date === todayStr && !n.dashboardArchived);
+  if (!note) { alert("今日の付箋メモがありません。"); return; }
+  linkNoteToItem(note.id, type, itemId);
+}
+
 window.initDashboardNote = initDashboardNote;
 window.linkTodayNoteToItem = linkTodayNoteToItem;
-
+window.linkNoteToItem = linkNoteToItem;
+window.renderDashboardStickyNotes = renderDashboardStickyNotes;
