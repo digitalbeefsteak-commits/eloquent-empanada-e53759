@@ -2226,3 +2226,20 @@ label {
   overflow: hidden;
 }
 
+/* Drag and Drop Note Linking Highlight */
+.drag-over-note {
+  border: 1px dashed #a855f7 !important;
+  background: rgba(168, 85, 247, 0.12) !important;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3) !important;
+  transform: scale(1.01) translateY(-1px);
+}
+
+#dashboard-note-draggable:hover {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: rgba(168, 85, 247, 0.6) !important;
+}
+
+#dashboard-note-draggable:active {
+  cursor: grabbing;
+}
+

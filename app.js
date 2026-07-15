@@ -992,6 +992,7 @@ function renderAll() {
   renderCalendar();
   renderNotes();
   renderReviewPage();
+  initDashboardNote();
   updateGoalDropdowns();
   updateSyncDisplay();
 }
@@ -1209,6 +1210,26 @@ function renderTodayTasks() {
       li.style.opacity = "0.4";
     });
     li.addEventListener("dragend", () => { li.style.opacity = ""; });
+
+    // ドラッグ＆ドロップによるメモ紐付け
+    li.addEventListener("dragover", e => {
+      if (e.dataTransfer.types.includes("text/plain")) {
+        e.preventDefault();
+        li.classList.add("drag-over-note");
+      }
+    });
+    li.addEventListener("dragleave", () => {
+      li.classList.remove("drag-over-note");
+    });
+    li.addEventListener("drop", e => {
+      e.preventDefault();
+      li.classList.remove("drag-over-note");
+      const dragType = e.dataTransfer.getData("text/plain");
+      if (dragType === "note-today") {
+        linkTodayNoteToItem("task", task.id);
+      }
+    });
+
     el.appendChild(li);
   });
 }
@@ -1498,6 +1519,26 @@ function renderTimeline() {
       <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.title}</div>
       <div style="font-size:9.5px;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.startTime}–${s.endTime}</div>
     `;
+
+    // ドラッグ＆ドロップによるメモ紐付け
+    eventEl.addEventListener("dragover", e => {
+      if (e.dataTransfer.types.includes("text/plain")) {
+        e.preventDefault();
+        eventEl.classList.add("drag-over-note");
+      }
+    });
+    eventEl.addEventListener("dragleave", () => {
+      eventEl.classList.remove("drag-over-note");
+    });
+    eventEl.addEventListener("drop", e => {
+      e.preventDefault();
+      eventEl.classList.remove("drag-over-note");
+      const dragType = e.dataTransfer.getData("text/plain");
+      if (dragType === "note-today") {
+        linkTodayNoteToItem("schedule", s.id);
+      }
+    });
+
     inner.appendChild(eventEl);
   });
 
@@ -2291,19 +2332,39 @@ function populateTaskModal(task, defaultGoalId) {
   document.getElementById("task-status").value = isEdit ? task.status : "today";
   document.getElementById("task-priority").value = isEdit ? task.priority : "medium";
   document.getElementById("task-duedate").value = isEdit ? (task.duedate || "") : "";
-  document.getElementById("task-desc").value = isEdit ? (task.desc || "") : "";
-  // 親タスク
-  updateParentDropdown(goalSel.value, isEdit ? (task.parentTaskId || "none") : "none", isEdit ? task.id : null);
-  // 子タスクセクション (マイルストーンの場合のみ表示)
-  const subSection = document.getElementById("subtasks-section");
-  if (subSection) {
-    if (isEdit && task.isMilestone) {
-      subSection.style.display = "block";
-      renderModalSubtasks(task.id);
+  // 関連メモ (Notes) の表示
+  const relatedNotesSection = document.getElementById("task-related-notes-section");
+  const relatedNotesList = document.getElementById("task-related-notes-list");
+  if (relatedNotesSection && relatedNotesList) {
+    if (isEdit) {
+      relatedNotesSection.style.display = "block";
+      const relatedNotes = appState.notes.filter(n => n.taskIds && n.taskIds.includes(task.id));
+      relatedNotesList.innerHTML = "";
+      if (relatedNotes.length === 0) {
+        relatedNotesList.innerHTML = `<span style="color:rgba(255,255,255,0.22); font-style:italic;">紐づくメモはありません</span>`;
+      } else {
+        relatedNotes.forEach(note => {
+          const item = document.createElement("div");
+          item.style.cssText = "padding:6px 8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
+          
+          const firstLine = note.content.trim().split("\n")[0] || "無題のメモ";
+          item.innerHTML = `
+            <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
+            <span style="color:var(--accent); font-size:10px; font-weight:600; flex-shrink:0;">表示</span>
+          `;
+          item.addEventListener("click", () => {
+            closeAllModals();
+            switchView("notes");
+            selectNote(note.id);
+          });
+          relatedNotesList.appendChild(item);
+        });
+      }
     } else {
-      subSection.style.display = "none";
+      relatedNotesSection.style.display = "none";
     }
   }
+
   openModal("modal-task-form");
 }
 
@@ -2425,6 +2486,10 @@ function openAddScheduleModal(dateStr) {
   document.getElementById("schedule-end-time").value = "11:00";
   document.getElementById("schedule-allday").checked = false;
   document.getElementById("schedule-desc").value = "";
+
+  const relatedNotesSection = document.getElementById("schedule-related-notes-section");
+  if (relatedNotesSection) relatedNotesSection.style.display = "none";
+
   openModal("modal-schedule-form");
 }
 
@@ -2440,6 +2505,35 @@ function openEditScheduleModal(schId) {
   document.getElementById("schedule-end-time").value = s.endTime;
   document.getElementById("schedule-allday").checked = s.allday;
   document.getElementById("schedule-desc").value = s.desc || "";
+
+  const relatedNotesSection = document.getElementById("schedule-related-notes-section");
+  const relatedNotesList = document.getElementById("schedule-related-notes-list");
+  if (relatedNotesSection && relatedNotesList) {
+    relatedNotesSection.style.display = "block";
+    const relatedNotes = appState.notes.filter(n => n.scheduleIds && n.scheduleIds.includes(s.id));
+    relatedNotesList.innerHTML = "";
+    if (relatedNotes.length === 0) {
+      relatedNotesList.innerHTML = `<span style="color:rgba(255,255,255,0.22); font-style:italic;">紐づくメモはありません</span>`;
+    } else {
+      relatedNotes.forEach(note => {
+        const item = document.createElement("div");
+        item.style.cssText = "padding:6px 8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
+        
+        const firstLine = note.content.trim().split("\n")[0] || "無題のメモ";
+        item.innerHTML = `
+          <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
+          <span style="color:var(--accent); font-size:10px; font-weight:600; flex-shrink:0;">表示</span>
+        `;
+        item.addEventListener("click", () => {
+          closeAllModals();
+          switchView("notes");
+          selectNote(note.id);
+        });
+        relatedNotesList.appendChild(item);
+      });
+    }
+  }
+
   openModal("modal-schedule-form");
 }
 
@@ -4193,4 +4287,111 @@ window.closeRelationModal = closeRelationModal;
 window.confirmRelationSelection = confirmRelationSelection;
 window.addNoteIndicatorToCalendarCell = addNoteIndicatorToCalendarCell;
 window.renderWeeklyNotesForReview = renderWeeklyNotesForReview;
+
+function initDashboardNote() {
+  const textarea = document.getElementById("dashboard-note-textarea");
+  const dragEl = document.getElementById("dashboard-note-draggable");
+  const dragLabel = document.getElementById("dashboard-note-drag-label");
+  if (!textarea) return;
+
+  const todayStr = formatDate(appState.currentDate);
+  const note = appState.notes.find(n => n.date === todayStr);
+
+  if (!textarea.dataset.listenerInitialized) {
+    textarea.addEventListener("input", (e) => {
+      const content = e.target.value;
+      const tStr = formatDate(appState.currentDate);
+      let nObj = appState.notes.find(n => n.date === tStr);
+
+      if (content.trim()) {
+        if (nObj) {
+          nObj.content = content;
+          nObj.updatedAt = new Date().toISOString();
+        } else {
+          nObj = {
+            id: "note-" + Math.random().toString(36).substr(2, 9),
+            date: tStr,
+            content: content,
+            taskIds: [],
+            scheduleIds: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          appState.notes.push(nObj);
+        }
+        if (dragEl && dragLabel) {
+          dragEl.style.display = "flex";
+          const title = content.trim().split("\n")[0] || "今日のメモ";
+          dragLabel.textContent = `📝 ${title} (ドラッグしてタスク/予定に紐づけ)`;
+        }
+      } else {
+        if (nObj) {
+          appState.notes = appState.notes.filter(n => n.id !== nObj.id);
+        }
+        if (dragEl) dragEl.style.display = "none";
+      }
+
+      saveData();
+      renderCalendar();
+    });
+
+    if (dragEl) {
+      dragEl.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", "note-today");
+        e.dataTransfer.effectAllowed = "link";
+      });
+    }
+
+    textarea.dataset.listenerInitialized = "true";
+  }
+
+  // 他端末同期等により変更された値を textarea に反映 (フォーカスしていない時のみ上書き)
+  if (document.activeElement !== textarea) {
+    if (note) {
+      textarea.value = note.content;
+      if (dragEl && dragLabel) {
+        dragEl.style.display = "flex";
+        const title = note.content.trim().split("\n")[0] || "今日のメモ";
+        dragLabel.textContent = `📝 ${title} (ドラッグしてタスク/予定に紐づけ)`;
+      }
+    } else {
+      textarea.value = "";
+      if (dragEl) dragEl.style.display = "none";
+    }
+  }
+}
+
+function linkTodayNoteToItem(type, itemId) {
+  const todayStr = formatDate(appState.currentDate);
+  const note = appState.notes.find(n => n.date === todayStr);
+  if (!note) {
+    alert("今日のメモに内容を入力してください。");
+    return;
+  }
+
+  if (type === "task") {
+    if (!note.taskIds) note.taskIds = [];
+    if (!note.taskIds.includes(itemId)) {
+      note.taskIds.push(itemId);
+      saveData();
+      renderAll();
+      alert("メモをタスクに紐づけました。");
+    } else {
+      alert("このタスクは既に紐づいています。");
+    }
+  } else if (type === "schedule") {
+    if (!note.scheduleIds) note.scheduleIds = [];
+    if (!note.scheduleIds.includes(itemId)) {
+      note.scheduleIds.push(itemId);
+      saveData();
+      renderAll();
+      alert("メモを予定に紐づけました。");
+    } else {
+      alert("この予定は既に紐づいています。");
+    }
+  }
+}
+
+window.initDashboardNote = initDashboardNote;
+window.linkTodayNoteToItem = linkTodayNoteToItem;
 
