@@ -4039,6 +4039,8 @@ function saveActiveNote() {
     note.taskIds = [...pendingRelations.taskIds];
     note.scheduleIds = [...pendingRelations.scheduleIds];
     note.updatedAt = new Date().toISOString();
+    // 旧フォーマットのメモに dashboardArchived が未設定の場合は初期化
+    if (note.dashboardArchived === undefined) note.dashboardArchived = false;
   } else {
     // 新規作成
     note = {
@@ -4047,6 +4049,7 @@ function saveActiveNote() {
       content,
       taskIds: [...pendingRelations.taskIds],
       scheduleIds: [...pendingRelations.scheduleIds],
+      dashboardArchived: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -4057,10 +4060,12 @@ function saveActiveNote() {
 
   saveData();
   renderNotes();
-  
-  // カレンダーやレビューを再生成
+
+  // カレンダー・レビュー・ダッシュボード付箋を再生成
   renderCalendar();
   renderReviewPage();
+  // 保存した日付が今日なら付箋リストも更新
+  if (typeof renderDashboardStickyNotes === "function") renderDashboardStickyNotes();
 
   alert("メモを保存しました。");
 }
