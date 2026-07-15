@@ -836,23 +836,47 @@ function parseICS(text) {
       else if (key === "DTSTART") ev.dtstart = val;
       else if (key === "DTEND") ev.dtend = val;
       else if (key === "RRULE") ev.rrule = val;
+      else if (key === "UID") ev.uid = val;
+      else if (key.startsWith("EXDATE")) {
+        if (!ev.exdates) ev.exdates = [];
+        val.split(",").forEach(v => {
+          const d = parseICSDate(v);
+          if (d) ev.exdates.push(formatDate(d));
+        });
+      }
     }
   }
 
   const result = [];
-  events.forEach(e => {
+  const overrideMap = new Map();
+
+  // 1. まずRRULE（繰り返しルール）のない個別予定（変更分や単発の予定）を処理
+  const singles = events.filter(e => !e.rrule);
+  const masters = events.filter(e => e.rrule);
+
+  singles.forEach(e => {
+    const start = parseICSDate(e.dtstart);
+    const end = parseICSDate(e.dtend);
+    if (!start || !end) return;
+
+    const allday = (e.dtstart || "").length <= 8;
+    const eventObj = createEventObject(e.title, start, end, allday, e.desc);
+    result.push(eventObj);
+
+    // UIDがある場合、その予定日（startDate）を上書きマップに登録
+    if (e.uid) {
+      overrideMap.set(`${e.uid}_${eventObj.startDate}`, true);
+    }
+  });
+
+  // 2. 次に繰り返しマスタ予定を展開（個別予定がある日やEXDATE指定日はスキップ）
+  masters.forEach(e => {
     const start = parseICSDate(e.dtstart);
     const end = parseICSDate(e.dtend);
     if (!start || !end) return;
 
     const allday = (e.dtstart || "").length <= 8;
     const durationMs = end.getTime() - start.getTime();
-
-    // 繰り返し設定(RRULE)がない場合は単一イベントとして追加
-    if (!e.rrule) {
-      result.push(createEventObject(e.title, start, end, allday, e.desc));
-      return;
-    }
 
     // RRULEをパース
     const rruleObj = {};
@@ -878,6 +902,9 @@ function parseICS(text) {
     let count = 0;
     const maxCount = parseInt(rruleObj.COUNT || "100", 10);
 
+    // マスタに紐づくEXDATE（除外日）のセット
+    const exdateSet = new Set(e.exdates || []);
+
     while (currentStart <= limitDate && count < maxCount) {
       let shouldAdd = true;
       if (freq === "WEEKLY" && rruleObj.BYDAY) {
@@ -890,8 +917,15 @@ function parseICS(text) {
       }
 
       if (shouldAdd) {
-        const currentEnd = new Date(currentStart.getTime() + durationMs);
-        result.push(createEventObject(e.title, currentStart, currentEnd, allday, e.desc));
+        const currentDateStr = formatDate(currentStart);
+        const isExcluded = exdateSet.has(currentDateStr);
+        const isOverridden = e.uid && overrideMap.has(`${e.uid}_${currentDateStr}`);
+
+        // 除外日（EXDATE）でも個別上書き（overrideMap）でもない場合のみ追加
+        if (!isExcluded && !isOverridden) {
+          const currentEnd = new Date(currentStart.getTime() + durationMs);
+          result.push(createEventObject(e.title, currentStart, currentEnd, allday, e.desc));
+        }
         count++;
       }
 
