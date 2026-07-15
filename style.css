@@ -2304,15 +2304,15 @@ label {
 }
 
 .dashboard-sticky-note .sticky-note-content {
-  /* テキストを折り返して自然な高さに */
-  white-space: pre-wrap;
+  /* white-space は内部の個別divで設定し、ここでは設定しない */
   word-break: break-word;
   overflow-wrap: break-word;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   pointer-events: none;
   height: auto !important;
   min-height: 0;
   overflow: visible;
+  display: block;
 }
 
 .dashboard-sticky-note .sticky-note-meta {

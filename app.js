@@ -4329,28 +4329,28 @@ function renderDashboardStickyNotes() {
     // ---- 表示モードのHTMLを生成する関数 ----
     function renderViewMode() {
       card.draggable = true;
-      card.innerHTML = `
-        <div class="sticky-note-content" style="pointer-events:none;">
-          ${firstLine ? `<div style="font-weight:600; margin-bottom:${rest ? "3px" : "0"}; white-space:pre-wrap; word-break:break-word;">${firstLine}</div>` : ""}
-          ${rest ? `<div style="color:rgba(255,255,255,0.65); font-size:11.5px; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word;">${rest}</div>` : ""}
-        </div>
-        <div class="sticky-note-meta">
-          <span style="display:flex; align-items:center; gap:6px;">
-            <span>${timeStr}</span>
-            ${linkBadge}
-          </span>
-          <div class="sticky-note-actions">
-            <button class="sticky-note-btn archive" data-id="${note.id}" title="ダッシュボードから非表示">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-              アーカイブ
-            </button>
-            <button class="sticky-note-btn delete" data-id="${note.id}" title="削除">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-              削除
-            </button>
-          </div>
-        </div>
-      `;
+      const contentHtml = [
+        firstLine ? `<div style="font-weight:600;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;${rest ? "margin-bottom:3px;" : ""}">${firstLine}</div>` : "",
+        rest      ? `<div style="color:rgba(255,255,255,0.65);font-size:11.5px;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;">${rest}</div>` : ""
+      ].join("");
+
+      card.innerHTML =
+        `<div class="sticky-note-content" style="pointer-events:none;">${contentHtml}</div>` +
+        `<div class="sticky-note-meta">` +
+          `<span style="display:flex;align-items:center;gap:6px;">` +
+            `<span>${timeStr}</span>${linkBadge}` +
+          `</span>` +
+          `<div class="sticky-note-actions">` +
+            `<button class="sticky-note-btn archive" data-id="${note.id}" title="ダッシュボードから非表示">` +
+              `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>` +
+              `アーカイブ` +
+            `</button>` +
+            `<button class="sticky-note-btn delete" data-id="${note.id}" title="削除">` +
+              `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>` +
+              `削除` +
+            `</button>` +
+          `</div>` +
+        `</div>`;
 
       // アーカイブボタン
       card.querySelector(".archive").addEventListener("click", e => {
