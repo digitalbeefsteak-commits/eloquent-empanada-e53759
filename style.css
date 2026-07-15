@@ -2285,6 +2285,8 @@ label {
   cursor: grab;
   user-select: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s;
+  /* テキスト量に応じて縦幅を自動調整 */
+  height: auto;
   flex-shrink: 0;
 }
 
@@ -2299,10 +2301,15 @@ label {
 }
 
 .dashboard-sticky-note .sticky-note-content {
+  /* テキストを折り返して自然な高さに */
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: break-word;
   margin-bottom: 8px;
   pointer-events: none;
+  /* 高さは内容に任せる */
+  height: auto;
+  overflow: visible;
 }
 
 .dashboard-sticky-note .sticky-note-meta {

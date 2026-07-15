@@ -4330,8 +4330,8 @@ function renderDashboardStickyNotes() {
 
     card.innerHTML = `
       <div class="sticky-note-content" style="pointer-events:none;">
-        ${firstLine ? `<div style="font-weight:600; margin-bottom:${rest ? "4px" : "0"};">${firstLine}</div>` : ""}
-        ${rest ? `<div style="color:rgba(255,255,255,0.6); font-size:11px;">${rest}</div>` : ""}
+        ${firstLine ? `<div style="font-weight:600; margin-bottom:${rest ? "3px" : "0"}; white-space:pre-wrap; word-break:break-word;">${firstLine}</div>` : ""}
+        ${rest ? `<div style="color:rgba(255,255,255,0.65); font-size:11.5px; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word;">${rest}</div>` : ""}
       </div>
       <div class="sticky-note-meta">
         <span style="display:flex; align-items:center; gap:6px;">
