@@ -2285,9 +2285,12 @@ label {
   cursor: grab;
   user-select: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s;
-  /* テキスト量に応じて縦幅を自動調整 */
-  height: auto;
-  flex-shrink: 0;
+  /* コンテンツの量だけ縦幅を使い、それ以上は絶対に伸びない */
+  flex: 0 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  height: auto !important;
+  min-height: 0;
 }
 
 .dashboard-sticky-note:hover {
@@ -2307,8 +2310,8 @@ label {
   overflow-wrap: break-word;
   margin-bottom: 8px;
   pointer-events: none;
-  /* 高さは内容に任せる */
-  height: auto;
+  height: auto !important;
+  min-height: 0;
   overflow: visible;
 }
 
