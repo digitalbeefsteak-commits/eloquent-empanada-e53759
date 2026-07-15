@@ -4299,7 +4299,6 @@ function renderDashboardStickyNotes() {
   if (!container) return;
 
   const todayStr = formatDate(appState.currentDate);
-  // 今日の非アーカイブメモを新しい順に表示
   const todayNotes = appState.notes
     .filter(n => n.date === todayStr && !n.dashboardArchived)
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
@@ -4321,69 +4320,149 @@ function renderDashboardStickyNotes() {
     const rest = note.content.trim().split("\n").slice(1).join("\n");
     const timeStr = note.createdAt ? new Date(note.createdAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "";
 
-    // 紐付きアイコン
     const linkedTask = note.taskIds && note.taskIds.length > 0;
     const linkedSch  = note.scheduleIds && note.scheduleIds.length > 0;
     const linkBadge  = (linkedTask || linkedSch)
       ? `<span style="color:rgba(168,85,247,0.8); font-size:10px;">🔗 紐づき${linkedTask ? " タスク" : ""}${linkedSch ? " 予定" : ""}</span>`
       : "";
 
-    card.innerHTML = `
-      <div class="sticky-note-content" style="pointer-events:none;">
-        ${firstLine ? `<div style="font-weight:600; margin-bottom:${rest ? "3px" : "0"}; white-space:pre-wrap; word-break:break-word;">${firstLine}</div>` : ""}
-        ${rest ? `<div style="color:rgba(255,255,255,0.65); font-size:11.5px; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word;">${rest}</div>` : ""}
-      </div>
-      <div class="sticky-note-meta">
-        <span style="display:flex; align-items:center; gap:6px;">
-          <span>${timeStr}</span>
-          ${linkBadge}
-        </span>
-        <div class="sticky-note-actions">
-          <button class="sticky-note-btn archive" data-id="${note.id}" title="ダッシュボードから非表示">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-            アーカイブ
-          </button>
-          <button class="sticky-note-btn delete" data-id="${note.id}" title="削除">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            削除
-          </button>
+    // ---- 表示モードのHTMLを生成する関数 ----
+    function renderViewMode() {
+      card.draggable = true;
+      card.innerHTML = `
+        <div class="sticky-note-content" style="pointer-events:none;">
+          ${firstLine ? `<div style="font-weight:600; margin-bottom:${rest ? "3px" : "0"}; white-space:pre-wrap; word-break:break-word;">${firstLine}</div>` : ""}
+          ${rest ? `<div style="color:rgba(255,255,255,0.65); font-size:11.5px; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word;">${rest}</div>` : ""}
         </div>
-      </div>
-    `;
+        <div class="sticky-note-meta">
+          <span style="display:flex; align-items:center; gap:6px;">
+            <span>${timeStr}</span>
+            ${linkBadge}
+          </span>
+          <div class="sticky-note-actions">
+            <button class="sticky-note-btn archive" data-id="${note.id}" title="ダッシュボードから非表示">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              アーカイブ
+            </button>
+            <button class="sticky-note-btn delete" data-id="${note.id}" title="削除">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              削除
+            </button>
+          </div>
+        </div>
+      `;
 
-    // ドラッグ（付箋カード自体をドラッグして紐付け）
+      // アーカイブボタン
+      card.querySelector(".archive").addEventListener("click", e => {
+        e.stopPropagation();
+        const n = appState.notes.find(x => x.id === note.id);
+        if (n) { n.dashboardArchived = true; saveData(); renderDashboardStickyNotes(); }
+      });
+
+      // 削除ボタン
+      card.querySelector(".delete").addEventListener("click", e => {
+        e.stopPropagation();
+        if (!confirm("このメモを削除しますか？")) return;
+        appState.notes = appState.notes.filter(x => x.id !== note.id);
+        saveData(); renderDashboardStickyNotes(); renderCalendar();
+      });
+    }
+
+    // ---- 編集モードのHTMLを生成する関数 ----
+    function renderEditMode() {
+      card.draggable = false; // 編集中はドラッグ無効
+      const currentContent = appState.notes.find(x => x.id === note.id)?.content || note.content;
+      card.innerHTML = `
+        <textarea class="sticky-edit-textarea" style="
+          width: 100%; box-sizing: border-box;
+          min-height: 72px; height: auto;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(251,191,36,0.5);
+          border-radius: 5px;
+          color: #fff; font-size: 12px; font-family: inherit;
+          line-height: 1.6; resize: vertical;
+          padding: 7px 9px; outline: none;
+          margin-bottom: 6px;
+        ">${currentContent}</textarea>
+        <div style="display:flex; gap:6px; justify-content:flex-end;">
+          <button class="sticky-note-btn cancel-edit" style="font-size:11px; padding:3px 9px;">キャンセル</button>
+          <button class="sticky-note-btn save-edit" style="
+            font-size:11px; padding:3px 10px;
+            background:rgba(251,191,36,0.2);
+            border-color:rgba(251,191,36,0.45);
+            color:rgba(255,220,80,0.95); font-weight:600;
+          ">保存</button>
+        </div>
+      `;
+
+      const ta = card.querySelector(".sticky-edit-textarea");
+      // テキストエリアの高さをコンテンツに合わせて自動調整
+      ta.style.height = "auto";
+      ta.style.height = ta.scrollHeight + "px";
+      ta.addEventListener("input", () => {
+        ta.style.height = "auto";
+        ta.style.height = ta.scrollHeight + "px";
+      });
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+
+      // Escape でキャンセル
+      ta.addEventListener("keydown", e => {
+        if (e.key === "Escape") { renderViewMode(); }
+        // Ctrl+Enter で保存
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          card.querySelector(".save-edit").click();
+        }
+      });
+
+      card.querySelector(".cancel-edit").addEventListener("click", e => {
+        e.stopPropagation();
+        renderViewMode();
+      });
+
+      card.querySelector(".save-edit").addEventListener("click", e => {
+        e.stopPropagation();
+        const newContent = ta.value.trim();
+        if (!newContent) return;
+        const n = appState.notes.find(x => x.id === note.id);
+        if (n) {
+          n.content = newContent;
+          n.updatedAt = new Date().toISOString();
+          // firstLine / rest を更新して再描画
+          const lines = newContent.split("\n");
+          Object.assign(note, { content: newContent });
+          // ローカル変数も更新してview modeを正しく表示
+          const newFirst = lines[0] || "";
+          const newRest = lines.slice(1).join("\n");
+          // renderDashboardStickyNotes で全体再描画
+          saveData();
+          renderDashboardStickyNotes();
+        }
+      });
+    }
+
+    // 初期表示は表示モード
+    renderViewMode();
+
+    // カードクリック → 編集モードへ（ボタン以外）
+    card.addEventListener("click", e => {
+      if (e.target.closest(".sticky-note-btn") || e.target.closest("button")) return;
+      if (card.querySelector(".sticky-edit-textarea")) return; // 既に編集中
+      renderEditMode();
+    });
+
+    // ドラッグ
     card.addEventListener("dragstart", e => {
+      if (card.querySelector(".sticky-edit-textarea")) { e.preventDefault(); return; }
       e.dataTransfer.setData("text/plain", "note-id:" + note.id);
       e.dataTransfer.effectAllowed = "link";
       card.style.opacity = "0.5";
     });
     card.addEventListener("dragend", () => { card.style.opacity = ""; });
 
-    // アーカイブボタン
-    card.querySelector(".archive").addEventListener("click", e => {
-      e.stopPropagation();
-      const n = appState.notes.find(x => x.id === note.id);
-      if (n) {
-        n.dashboardArchived = true;
-        saveData();
-        renderDashboardStickyNotes();
-      }
-    });
-
-    // 削除ボタン
-    card.querySelector(".delete").addEventListener("click", e => {
-      e.stopPropagation();
-      if (!confirm("このメモを削除しますか？")) return;
-      appState.notes = appState.notes.filter(x => x.id !== note.id);
-      saveData();
-      renderDashboardStickyNotes();
-      renderCalendar();
-    });
-
     container.appendChild(card);
   });
 
-  // Lucide アイコン再初期化
   if (window.lucide) lucide.createIcons();
 }
 
