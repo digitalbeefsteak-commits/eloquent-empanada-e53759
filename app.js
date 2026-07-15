@@ -4292,48 +4292,58 @@ function initDashboardNote() {
   const textarea = document.getElementById("dashboard-note-textarea");
   const dragEl = document.getElementById("dashboard-note-draggable");
   const dragLabel = document.getElementById("dashboard-note-drag-label");
+  const saveBtn = document.getElementById("btn-save-dashboard-note");
   if (!textarea) return;
 
   const todayStr = formatDate(appState.currentDate);
   const note = appState.notes.find(n => n.date === todayStr);
 
   if (!textarea.dataset.listenerInitialized) {
-    textarea.addEventListener("input", (e) => {
-      const content = e.target.value;
-      const tStr = formatDate(appState.currentDate);
-      let nObj = appState.notes.find(n => n.date === tStr);
-
-      if (content.trim()) {
-        if (nObj) {
-          nObj.content = content;
-          nObj.updatedAt = new Date().toISOString();
-        } else {
-          nObj = {
-            id: "note-" + Math.random().toString(36).substr(2, 9),
-            date: tStr,
-            content: content,
-            taskIds: [],
-            scheduleIds: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          appState.notes.push(nObj);
-        }
-        if (dragEl && dragLabel) {
-          dragEl.style.display = "flex";
-          const title = content.trim().split("\n")[0] || "今日のメモ";
-          dragLabel.textContent = `📝 ${title} (ドラッグしてタスク/予定に紐づけ)`;
-        }
-      } else {
-        if (nObj) {
-          appState.notes = appState.notes.filter(n => n.id !== nObj.id);
-        }
-        if (dragEl) dragEl.style.display = "none";
-      }
-
-      saveData();
-      renderCalendar();
+    // 入力中は、保存内容とズレるため一旦ドラッグバッジを非表示にする
+    textarea.addEventListener("input", () => {
+      if (dragEl) dragEl.style.display = "none";
     });
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", () => {
+        const content = textarea.value;
+        const tStr = formatDate(appState.currentDate);
+        let nObj = appState.notes.find(n => n.date === tStr);
+
+        if (content.trim()) {
+          if (nObj) {
+            nObj.content = content;
+            nObj.updatedAt = new Date().toISOString();
+          } else {
+            nObj = {
+              id: "note-" + Math.random().toString(36).substr(2, 9),
+              date: tStr,
+              content: content,
+              taskIds: [],
+              scheduleIds: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            appState.notes.push(nObj);
+          }
+          if (dragEl && dragLabel) {
+            dragEl.style.display = "flex";
+            const title = content.trim().split("\n")[0] || "今日のメモ";
+            dragLabel.textContent = `📝 ${title} (ドラッグしてタスク/予定に紐づけ)`;
+          }
+          alert("メモを保存しました。");
+        } else {
+          if (nObj) {
+            appState.notes = appState.notes.filter(n => n.id !== nObj.id);
+          }
+          if (dragEl) dragEl.style.display = "none";
+          alert("メモをクリアしました。");
+        }
+
+        saveData();
+        renderCalendar();
+      });
+    }
 
     if (dragEl) {
       dragEl.addEventListener("dragstart", (e) => {

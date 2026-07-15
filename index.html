@@ -86,7 +86,7 @@
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.0.7</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.0.8</div>
       </div>
     </aside>
 
@@ -114,7 +114,7 @@
         <!-- VIEW: ダッシュボード -->
         <section id="view-dashboard" class="view-section active">
           <div class="dashboard-grid">
-            <!-- 左カラム: スケジュールと空き時間 -->
+            <!-- カラム1: スケジュールと空き時間 -->
             <div class="grid-col-left">
               <div class="card card-timeline glass">
                 <div class="card-header">
@@ -130,22 +130,8 @@
               </div>
             </div>
 
-            <!-- 右カラム: 目標進捗と雑タスク -->
-            <div class="grid-col-right">
-              <!-- 目標進捗サマリー -->
-              <div class="card card-goals-summary glass">
-                <div class="card-header">
-                  <div class="header-left">
-                    <i data-lucide="target" class="text-cyan"></i>
-                    <h2>2026年度目標</h2>
-                  </div>
-                </div>
-                <div class="goals-progress-list" id="dashboard-goals-list">
-                  <!-- 目標進捗ゲージが動的に生成される -->
-                </div>
-              </div>
-
-              <!-- 今日のタスク (今日やる) -->
+            <!-- カラム2: 今日のタスク -->
+            <div class="grid-col-center">
               <div class="card card-todo-today glass">
                 <div class="card-header">
                   <div class="header-left">
@@ -163,6 +149,22 @@
                   <input type="text" id="input-quick-todo" placeholder="今日やるタスクを入力してEnter" class="input-text">
                 </div>
               </div>
+            </div>
+
+            <!-- カラム3: 目標進捗と今日のメモ -->
+            <div class="grid-col-right">
+              <!-- 目標進捗サマリー -->
+              <div class="card card-goals-summary glass">
+                <div class="card-header">
+                  <div class="header-left">
+                    <i data-lucide="target" class="text-cyan"></i>
+                    <h2>2026年度目標</h2>
+                  </div>
+                </div>
+                <div class="goals-progress-list" id="dashboard-goals-list">
+                  <!-- 目標進捗ゲージが動的に生成される -->
+                </div>
+              </div>
 
               <!-- 今日のメモ (Notes) -->
               <div class="card card-notes-today glass" style="margin-top: 16px; display: flex; flex-direction: column;">
@@ -173,8 +175,12 @@
                   </div>
                 </div>
                 <div class="card-body" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
-                  <textarea id="dashboard-note-textarea" placeholder="今日の気づきやアイデアをここにメモ... (自動保存)" style="width:100%; height:75px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; color:#fff; font-size:12px; resize:none; padding:8px; outline:none; font-family:inherit; line-height:1.5; box-sizing:border-box;"></textarea>
+                  <textarea id="dashboard-note-textarea" placeholder="今日の気づきやアイデアをここにメモ..." style="width:100%; height:75px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; color:#fff; font-size:12px; resize:none; padding:8px; outline:none; font-family:inherit; line-height:1.5; box-sizing:border-box;"></textarea>
                   
+                  <button class="btn btn-sm btn-accent" id="btn-save-dashboard-note" style="width:100%; justify-content:center; cursor:pointer; font-size:11.5px; height:28px; display:flex; align-items:center; gap:4px; border:none; border-radius:6px;">
+                    <i data-lucide="save" style="width:13px; height:13px;"></i> メモを保存
+                  </button>
+
                   <!-- ドラッグ可能なメモバッジ -->
                   <div id="dashboard-note-draggable" draggable="true" style="display:none; align-items:center; gap:8px; padding:8px 12px; background:rgba(168,85,247,0.1); border:1px dashed rgba(168,85,247,0.4); border-radius:6px; cursor:grab; font-size:11px; color:rgba(255,255,255,0.85); user-select:none; transition:background 0.2s;">
                     <i data-lucide="grip-vertical" style="width:12px; height:12px; color:rgba(255,255,255,0.4);"></i>
@@ -919,6 +925,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- JavaScript -->
-  <script src="app.js?v=1.0.7"></script>
+  <script src="app.js?v=1.0.8"></script>
 </body>
 </html>
