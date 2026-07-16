@@ -1388,6 +1388,29 @@ function renderTimeline() {
             taskRow.style.opacity = "0.4";
           });
           taskRow.addEventListener("dragend", () => { taskRow.style.opacity = ""; });
+
+          // ドラッグ＆ドロップによるメモ紐付け
+          taskRow.addEventListener("dragover", e => {
+            if (e.dataTransfer.types.includes("text/plain")) {
+              e.preventDefault();
+              taskRow.classList.add("drag-over-note");
+            }
+          });
+          taskRow.addEventListener("dragleave", () => {
+            taskRow.classList.remove("drag-over-note");
+          });
+          taskRow.addEventListener("drop", e => {
+            e.preventDefault();
+            taskRow.classList.remove("drag-over-note");
+            const dragData = e.dataTransfer.getData("text/plain");
+            if (dragData === "note-today") {
+              linkTodayNoteToItem("task", t.id);
+            } else if (dragData.startsWith("note-id:")) {
+              const noteId = dragData.replace("note-id:", "");
+              linkNoteToItem(noteId, "task", t.id);
+            }
+          });
+
           contentDiv.appendChild(taskRow);
         });
       } else {
