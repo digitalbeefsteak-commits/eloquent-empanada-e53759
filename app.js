@@ -1511,6 +1511,7 @@ function renderTimeline() {
       line-height:1.2;
       box-sizing:border-box;
       pointer-events:auto;
+      z-index:10;
     `;
     
     eventEl.onclick = (e) => {
