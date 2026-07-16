@@ -1236,10 +1236,7 @@ function renderTodayTasks() {
       e.stopPropagation();
       li.classList.remove("drag-over-note");
       const dragData = e.dataTransfer.getData("text/plain");
-      console.log("[Today Task Drop] dragData:", dragData, "taskId:", task.id);
-      if (dragData === "note-today") {
-        linkTodayNoteToItem("task", task.id);
-      } else if (dragData.startsWith("note-id:")) {
+      if (dragData.startsWith("note-id:")) {
         const noteId = dragData.replace("note-id:", "");
         linkNoteToItem(noteId, "task", task.id);
       }
@@ -1423,11 +1420,10 @@ function renderTimeline() {
           });
           taskRow.addEventListener("drop", e => {
             e.preventDefault();
+            e.stopPropagation();
             taskRow.classList.remove("drag-over-note");
             const dragData = e.dataTransfer.getData("text/plain");
-            if (dragData === "note-today") {
-              linkTodayNoteToItem("task", t.id);
-            } else if (dragData.startsWith("note-id:")) {
+            if (dragData.startsWith("note-id:")) {
               const noteId = dragData.replace("note-id:", "");
               linkNoteToItem(noteId, "task", t.id);
             }
@@ -1594,11 +1590,10 @@ function renderTimeline() {
     });
     eventEl.addEventListener("drop", e => {
       e.preventDefault();
+      e.stopPropagation();
       eventEl.classList.remove("drag-over-note");
       const dragData = e.dataTransfer.getData("text/plain");
-      if (dragData === "note-today") {
-        linkTodayNoteToItem("schedule", s.id);
-      } else if (dragData.startsWith("note-id:")) {
+      if (dragData.startsWith("note-id:")) {
         const noteId = dragData.replace("note-id:", "");
         linkNoteToItem(noteId, "schedule", s.id);
       }
@@ -1875,10 +1870,7 @@ function renderKanban() {
       e.stopPropagation();
       card.classList.remove("drag-over-note");
       const dragData = e.dataTransfer.getData("text/plain");
-      console.log("[Kanban Card Drop] dragData:", dragData, "taskId:", task.id);
-      if (dragData === "note-today") {
-        linkTodayNoteToItem("task", task.id);
-      } else if (dragData.startsWith("note-id:")) {
+      if (dragData.startsWith("note-id:")) {
         const noteId = dragData.replace("note-id:", "");
         linkNoteToItem(noteId, "task", task.id);
       }
@@ -2518,63 +2510,7 @@ function populateTaskModal(task, defaultGoalId) {
   openModal("modal-task-form");
 }
 
-function renderModalSubtasks(parentId) {
-  const list = document.getElementById("modal-subtask-list");
-  const count = document.getElementById("subtasks-count");
-  if (!list) return;
-  const children = appState.tasks.filter(t => t.parentTaskId === parentId);
-  if (count) count.textContent = children.length + "件";
-  list.innerHTML = "";
-  children.forEach(c => {
-    const div = document.createElement("div");
-    div.style.cssText = "display:flex;align-items:center;gap:8px;padding:5px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:4px;";
-    div.innerHTML = `
-      <input type="checkbox" ${c.status==="completed"?"checked":""} onchange="toggleSubtaskInModal('${parentId}','${c.id}')">
-      <span style="flex-grow:1;font-size:12.5px;color:${c.status==="completed"?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.85)"};text-decoration:${c.status==="completed"?"line-through":"none"};">${c.title}</span>
-      <button onclick="deleteChildTask('${parentId}','${c.id}')" style="background:none;border:none;color:rgba(255,80,80,0.7);cursor:pointer;font-size:11px;">削除</button>
-    `;
-    list.appendChild(div);
-  });
-}
 
-function toggleSubtaskInModal(parentId, subId) {
-  toggleTaskCompleted(subId);
-  renderModalSubtasks(parentId);
-}
-
-function deleteChildTask(parentId, subId) {
-  if (!confirm("この子タスクを削除しますか？")) return;
-  appState.tasks = appState.tasks.filter(t => t.id !== subId);
-  saveData();
-  renderAll();
-  renderModalSubtasks(parentId);
-}
-
-function handleAddSubtaskInModal() {
-  const parentId = document.getElementById("task-id").value;
-  const input = document.getElementById("new-subtask-title");
-  if (!parentId || !input) return;
-  const title = input.value.trim();
-  if (!title) return;
-  const parent = appState.tasks.find(t => t.id === parentId);
-  if (!parent) return;
-  appState.tasks.push({
-    id: "task-" + Date.now(),
-    title,
-    goalId: parent.goalId,
-    status: "today",
-    priority: "medium",
-    duedate: parent.duedate || "",
-    desc: "",
-    isMilestone: false,
-    parentTaskId: parentId,
-    completedAt: null
-  });
-  saveData();
-  renderAll();
-  renderModalSubtasks(parentId);
-  input.value = "";
-}
 
 function handleTaskFormSubmit(e) {
   e.preventDefault();
@@ -4789,14 +4725,6 @@ function linkNoteToItem(noteId, type, itemId) {
   }
 }
 
-// 後方互換のため旧シグネチャも残す
-function linkTodayNoteToItem(type, itemId) {
-  const todayStr = formatDate(appState.currentDate);
-  const note = appState.notes.find(n => n.date === todayStr && !n.dashboardArchived);
-  if (!note) { alert("今日の付箋メモがありません。"); return; }
-  linkNoteToItem(note.id, type, itemId);
-}
-
 function viewLinkedNote(noteId) {
   closeAllModals();
   switchView("notes");
@@ -4829,7 +4757,6 @@ function removeNoteRelation(noteId, type, itemId) {
 }
 
 window.initDashboardNote = initDashboardNote;
-window.linkTodayNoteToItem = linkTodayNoteToItem;
 window.linkNoteToItem = linkNoteToItem;
 window.renderDashboardStickyNotes = renderDashboardStickyNotes;
 window.viewLinkedNote = viewLinkedNote;
