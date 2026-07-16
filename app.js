@@ -2342,29 +2342,65 @@ function populateTaskModal(task, defaultGoalId) {
   // 関連メモ (Notes) の表示
   const relatedNotesSection = document.getElementById("task-related-notes-section");
   const relatedNotesList = document.getElementById("task-related-notes-list");
-  if (relatedNotesSection && relatedNotesList) {
+  const quickNoteInput = document.getElementById("task-quick-note-input");
+  const addQuickNoteBtn = document.getElementById("btn-task-add-quick-note");
+  
+  if (quickNoteInput) quickNoteInput.value = "";
+  
+  function renderTaskNotes() {
+    if (!relatedNotesList) return;
+    const relatedNotes = appState.notes.filter(n => n.taskIds && n.taskIds.includes(task.id));
+    relatedNotesList.innerHTML = "";
+    if (relatedNotes.length === 0) {
+      relatedNotesList.innerHTML = `<span style="color:rgba(255,255,255,0.22); font-style:italic;">紐づくメモはありません</span>`;
+    } else {
+      relatedNotes.forEach(note => {
+        const item = document.createElement("div");
+        item.style.cssText = "padding:6px 8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
+        const firstLine = note.content.trim().split("\n")[0] || "無題のメモ";
+        item.innerHTML = `
+          <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
+          <span style="color:var(--accent); font-size:10px; font-weight:600; flex-shrink:0;">表示</span>
+        `;
+        item.addEventListener("click", () => {
+          closeAllModals();
+          switchView("notes");
+          selectNote(note.id);
+        });
+        relatedNotesList.appendChild(item);
+      });
+    }
+  }
+
+  if (relatedNotesSection) {
     if (isEdit) {
       relatedNotesSection.style.display = "block";
-      const relatedNotes = appState.notes.filter(n => n.taskIds && n.taskIds.includes(task.id));
-      relatedNotesList.innerHTML = "";
-      if (relatedNotes.length === 0) {
-        relatedNotesList.innerHTML = `<span style="color:rgba(255,255,255,0.22); font-style:italic;">紐づくメモはありません</span>`;
-      } else {
-        relatedNotes.forEach(note => {
-          const item = document.createElement("div");
-          item.style.cssText = "padding:6px 8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
-          
-          const firstLine = note.content.trim().split("\n")[0] || "無題のメモ";
-          item.innerHTML = `
-            <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
-            <span style="color:var(--accent); font-size:10px; font-weight:600; flex-shrink:0;">表示</span>
-          `;
-          item.addEventListener("click", () => {
-            closeAllModals();
-            switchView("notes");
-            selectNote(note.id);
-          });
-          relatedNotesList.appendChild(item);
+      renderTaskNotes();
+      
+      if (addQuickNoteBtn) {
+        // Remove previous event listener to avoid duplicates
+        const newAddBtn = addQuickNoteBtn.cloneNode(true);
+        addQuickNoteBtn.parentNode.replaceChild(newAddBtn, addQuickNoteBtn);
+        newAddBtn.addEventListener("click", () => {
+          const content = quickNoteInput.value.trim();
+          if (!content) return;
+          const tStr = formatDate(appState.currentDate);
+          const newNote = {
+            id: "note-" + Math.random().toString(36).substr(2, 9),
+            date: tStr,
+            content,
+            taskIds: [task.id],
+            scheduleIds: [],
+            dashboardArchived: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          appState.notes.push(newNote);
+          quickNoteInput.value = "";
+          saveData();
+          renderTaskNotes();
+          renderDashboardStickyNotes();
+          renderCalendar();
         });
       }
     } else {
@@ -2515,8 +2551,13 @@ function openEditScheduleModal(schId) {
 
   const relatedNotesSection = document.getElementById("schedule-related-notes-section");
   const relatedNotesList = document.getElementById("schedule-related-notes-list");
-  if (relatedNotesSection && relatedNotesList) {
-    relatedNotesSection.style.display = "block";
+  const quickNoteInput = document.getElementById("schedule-quick-note-input");
+  const addQuickNoteBtn = document.getElementById("btn-schedule-add-quick-note");
+  
+  if (quickNoteInput) quickNoteInput.value = "";
+
+  function renderScheduleNotes() {
+    if (!relatedNotesList) return;
     const relatedNotes = appState.notes.filter(n => n.scheduleIds && n.scheduleIds.includes(s.id));
     relatedNotesList.innerHTML = "";
     if (relatedNotes.length === 0) {
@@ -2525,7 +2566,6 @@ function openEditScheduleModal(schId) {
       relatedNotes.forEach(note => {
         const item = document.createElement("div");
         item.style.cssText = "padding:6px 8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
-        
         const firstLine = note.content.trim().split("\n")[0] || "無題のメモ";
         item.innerHTML = `
           <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
@@ -2537,6 +2577,37 @@ function openEditScheduleModal(schId) {
           selectNote(note.id);
         });
         relatedNotesList.appendChild(item);
+      });
+    }
+  }
+
+  if (relatedNotesSection) {
+    relatedNotesSection.style.display = "block";
+    renderScheduleNotes();
+    
+    if (addQuickNoteBtn) {
+      const newAddBtn = addQuickNoteBtn.cloneNode(true);
+      addQuickNoteBtn.parentNode.replaceChild(newAddBtn, addQuickNoteBtn);
+      newAddBtn.addEventListener("click", () => {
+        const content = quickNoteInput.value.trim();
+        if (!content) return;
+        const tStr = formatDate(appState.currentDate);
+        const newNote = {
+          id: "note-" + Math.random().toString(36).substr(2, 9),
+          date: tStr,
+          content,
+          taskIds: [],
+          scheduleIds: [s.id],
+          dashboardArchived: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        appState.notes.push(newNote);
+        quickNoteInput.value = "";
+        saveData();
+        renderScheduleNotes();
+        renderDashboardStickyNotes();
+        renderCalendar();
       });
     }
   }
