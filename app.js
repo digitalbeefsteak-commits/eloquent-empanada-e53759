@@ -1206,6 +1206,7 @@ function renderTodayTasks() {
     `;
     li.addEventListener("dragstart", e => {
       e.dataTransfer.setData("text/plain", task.id);
+      e.dataTransfer.setData("application/x-lifeorbit-task", task.id);
       e.dataTransfer.effectAllowed = "move";
       li.style.opacity = "0.4";
     });
@@ -1213,8 +1214,9 @@ function renderTodayTasks() {
 
     // ドラッグ＆ドロップによるメモ紐付け
     li.addEventListener("dragover", e => {
-      if (e.dataTransfer.types.includes("text/plain")) {
+      if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
         e.preventDefault();
+        e.dataTransfer.dropEffect = "link";
         li.classList.add("drag-over-note");
       }
     });
@@ -1223,8 +1225,10 @@ function renderTodayTasks() {
     });
     li.addEventListener("drop", e => {
       e.preventDefault();
+      e.stopPropagation();
       li.classList.remove("drag-over-note");
       const dragData = e.dataTransfer.getData("text/plain");
+      console.log("[Today Task Drop] dragData:", dragData, "taskId:", task.id);
       if (dragData === "note-today") {
         linkTodayNoteToItem("task", task.id);
       } else if (dragData.startsWith("note-id:")) {
@@ -1384,6 +1388,7 @@ function renderTimeline() {
           `;
           taskRow.addEventListener("dragstart", e => {
             e.dataTransfer.setData("text/plain", t.id);
+            e.dataTransfer.setData("application/x-lifeorbit-task", t.id);
             e.dataTransfer.effectAllowed = "move";
             taskRow.style.opacity = "0.4";
           });
@@ -1391,8 +1396,9 @@ function renderTimeline() {
 
           // ドラッグ＆ドロップによるメモ紐付け
           taskRow.addEventListener("dragover", e => {
-            if (e.dataTransfer.types.includes("text/plain")) {
+            if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
               e.preventDefault();
+              e.dataTransfer.dropEffect = "link";
               taskRow.classList.add("drag-over-note");
             }
           });
@@ -1422,18 +1428,22 @@ function renderTimeline() {
 
     // ドラッグ＆ドロップイベント設定
     row.addEventListener("dragover", e => {
-      e.preventDefault();
-      if (hasSchedule) {
-        e.dataTransfer.dropEffect = "none";
-      } else {
-        e.dataTransfer.dropEffect = "move";
-        row.style.background = "rgba(100,200,255,0.1)";
+      if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
+        e.preventDefault();
+        if (hasSchedule) {
+          e.dataTransfer.dropEffect = "none";
+        } else {
+          e.dataTransfer.dropEffect = "move";
+          row.style.background = "rgba(100,200,255,0.1)";
+        }
       }
     });
     row.addEventListener("dragleave", () => { row.style.background = rowBg; });
     row.addEventListener("drop", e => {
       row.style.background = rowBg;
       if (hasSchedule) return;
+      const dragData = e.dataTransfer.getData("text/plain");
+      if (!dragData || dragData.startsWith("note-id:") || dragData === "note-today") return;
       dropOnTimeline(e, slot);
     });
 
@@ -1549,8 +1559,9 @@ function renderTimeline() {
 
     // ドラッグ＆ドロップによるメモ紐付け
     eventEl.addEventListener("dragover", e => {
-      if (e.dataTransfer.types.includes("text/plain")) {
+      if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
         e.preventDefault();
+        e.dataTransfer.dropEffect = "link";
         eventEl.classList.add("drag-over-note");
       }
     });
@@ -1579,6 +1590,7 @@ function renderTimeline() {
 
 function dragStartTask(event, taskId) {
   event.dataTransfer.setData("text/plain", taskId);
+  event.dataTransfer.setData("application/x-lifeorbit-task", taskId);
   event.dataTransfer.effectAllowed = "move";
 }
 
@@ -1817,6 +1829,7 @@ function renderKanban() {
     card.addEventListener("dragstart", e => {
       card.classList.add("dragging");
       e.dataTransfer.setData("text/plain", task.id);
+      e.dataTransfer.setData("application/x-lifeorbit-task", task.id);
     });
     card.addEventListener("dragend", () => {
       card.classList.remove("dragging");
@@ -1824,8 +1837,9 @@ function renderKanban() {
 
     // ドラッグ＆ドロップによるメモ紐付け
     card.addEventListener("dragover", e => {
-      if (e.dataTransfer.types.includes("text/plain")) {
+      if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
         e.preventDefault();
+        e.dataTransfer.dropEffect = "link";
         card.classList.add("drag-over-note");
       }
     });
@@ -1834,8 +1848,10 @@ function renderKanban() {
     });
     card.addEventListener("drop", e => {
       e.preventDefault();
+      e.stopPropagation();
       card.classList.remove("drag-over-note");
       const dragData = e.dataTransfer.getData("text/plain");
+      console.log("[Kanban Card Drop] dragData:", dragData, "taskId:", task.id);
       if (dragData === "note-today") {
         linkTodayNoteToItem("task", task.id);
       } else if (dragData.startsWith("note-id:")) {
@@ -2889,9 +2905,11 @@ function setupEventListeners() {
   const todoListEl = document.getElementById("dashboard-todo-list");
   if (todoListEl) {
     todoListEl.addEventListener("dragover", e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      todoListEl.style.background = "rgba(255,255,255,0.03)";
+      if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        todoListEl.style.background = "rgba(255,255,255,0.03)";
+      }
     });
     todoListEl.addEventListener("dragleave", () => {
       todoListEl.style.background = "";
@@ -2974,11 +2992,15 @@ function setupEventListeners() {
     const colEl = document.getElementById(colId);
     if (!colEl) return;
     colEl.addEventListener("dragover", e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
+      if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      }
     });
-    colEl.addEventListener("dragenter", () => {
-      colEl.classList.add("drag-over");
+    colEl.addEventListener("dragenter", e => {
+      if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
+        colEl.classList.add("drag-over");
+      }
     });
     colEl.addEventListener("dragleave", () => {
       colEl.classList.remove("drag-over");
@@ -2986,8 +3008,9 @@ function setupEventListeners() {
     colEl.addEventListener("drop", e => {
       e.preventDefault();
       colEl.classList.remove("drag-over");
-      const taskId = e.dataTransfer.getData("text/plain");
-      if (taskId) updateTaskStatus(taskId, status);
+      const dragData = e.dataTransfer.getData("text/plain");
+      if (!dragData || dragData.startsWith("note-id:") || dragData === "note-today") return;
+      updateTaskStatus(dragData, status);
     });
   });
 
@@ -4574,6 +4597,7 @@ function renderDashboardStickyNotes() {
     card.addEventListener("dragstart", e => {
       if (card.querySelector(".sticky-edit-textarea")) { e.preventDefault(); return; }
       e.dataTransfer.setData("text/plain", "note-id:" + note.id);
+      e.dataTransfer.setData("application/x-lifeorbit-note", note.id);
       e.dataTransfer.effectAllowed = "link";
       card.style.opacity = "0.5";
     });
@@ -4651,26 +4675,24 @@ function linkNoteToItem(noteId, type, itemId) {
   const note = appState.notes.find(n => n.id === noteId);
   if (!note) return;
 
+  let updated = false;
   if (type === "task") {
     if (!note.taskIds) note.taskIds = [];
     if (!note.taskIds.includes(itemId)) {
       note.taskIds.push(itemId);
-      saveData();
-      renderDashboardStickyNotes();
-      alert("メモをタスクに紐づけました。");
-    } else {
-      alert("このタスクは既に紐づいています。");
+      updated = true;
     }
   } else if (type === "schedule") {
     if (!note.scheduleIds) note.scheduleIds = [];
     if (!note.scheduleIds.includes(itemId)) {
       note.scheduleIds.push(itemId);
-      saveData();
-      renderDashboardStickyNotes();
-      alert("メモを予定に紐づけました。");
-    } else {
-      alert("この予定は既に紐づいています。");
+      updated = true;
     }
+  }
+
+  if (updated) {
+    saveData();
+    renderAll();
   }
 }
 

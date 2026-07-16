@@ -2372,3 +2372,16 @@ label {
   background: rgba(168, 85, 247, 0.12) !important;
   box-shadow: 0 0 14px rgba(168, 85, 247, 0.3) !important;
 }
+
+/* ドラッグ＆ドロップ時に子要素がイベントを奪って drop を阻害するのを防ぐ */
+.kanban-card > *,
+.todo-item > * {
+  pointer-events: none;
+}
+.kanban-card button,
+.kanban-card input,
+.todo-item button,
+.todo-item input,
+.todo-item a {
+  pointer-events: auto;
+}
