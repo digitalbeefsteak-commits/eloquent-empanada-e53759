@@ -2452,9 +2452,23 @@ function populateTaskModal(task, defaultGoalId) {
         item.style.cssText = "padding:6px 8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
         const firstLine = note.content.trim().split("\n")[0] || "無題のメモ";
         item.innerHTML = `
-          <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
-          <span style="color:var(--accent); font-size:10px; font-weight:600; flex-shrink:0;">表示</span>
+          <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+            <span class="btn-view" style="color:var(--accent); font-size:10px; font-weight:600; cursor:pointer;">表示</span>
+            <span class="btn-unlink" style="color:rgba(255,255,255,0.3); font-size:12px; font-weight:700; padding:0 4px; cursor:pointer;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(255,255,255,0.3)'" title="紐づけ解除">×</span>
+          </div>
         `;
+        item.querySelector(".btn-view").addEventListener("click", e => {
+          e.stopPropagation();
+          closeAllModals();
+          switchView("notes");
+          selectNote(note.id);
+        });
+        item.querySelector(".btn-unlink").addEventListener("click", e => {
+          e.stopPropagation();
+          removeNoteRelation(note.id, "task", task.id);
+          renderTaskNotes();
+        });
         item.addEventListener("click", () => {
           closeAllModals();
           switchView("notes");
@@ -2661,9 +2675,23 @@ function openEditScheduleModal(schId) {
         item.style.cssText = "padding:6px 8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
         const firstLine = note.content.trim().split("\n")[0] || "無題のメモ";
         item.innerHTML = `
-          <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
-          <span style="color:var(--accent); font-size:10px; font-weight:600; flex-shrink:0;">表示</span>
+          <span style="font-weight:600; flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;">📝 [${formatDateDisplay(note.date)}] ${firstLine}</span>
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+            <span class="btn-view" style="color:var(--accent); font-size:10px; font-weight:600; cursor:pointer;">表示</span>
+            <span class="btn-unlink" style="color:rgba(255,255,255,0.3); font-size:12px; font-weight:700; padding:0 4px; cursor:pointer;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(255,255,255,0.3)'" title="紐づけ解除">×</span>
+          </div>
         `;
+        item.querySelector(".btn-view").addEventListener("click", e => {
+          e.stopPropagation();
+          closeAllModals();
+          switchView("notes");
+          selectNote(note.id);
+        });
+        item.querySelector(".btn-unlink").addEventListener("click", e => {
+          e.stopPropagation();
+          removeNoteRelation(note.id, "schedule", s.id);
+          renderScheduleNotes();
+        });
         item.addEventListener("click", () => {
           closeAllModals();
           switchView("notes");
@@ -4502,17 +4530,27 @@ function renderDashboardStickyNotes() {
 
     let linkBadge = "";
     if (linkedTasks.length > 0 || linkedSchedules.length > 0) {
-      linkBadge = `<div class="sticky-note-links" style="display:flex; flex-direction:column; gap:3px; margin:6px 0 8px 0; border-top:1px solid rgba(251,191,36,0.15); padding-top:6px; font-size:10px; color:rgba(168,85,247,0.95); max-width:100%; overflow:hidden;">`;
+      linkBadge = `<div class="sticky-note-links" style="display:flex; flex-direction:column; gap:3.5px; margin:6px 0 8px 0; border-top:1px solid rgba(251,191,36,0.15); padding-top:6px; font-size:10px; color:rgba(168,85,247,0.95); max-width:100%; overflow:hidden;">`;
       linkedTasks.forEach(t => {
-        linkBadge += `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:4px;" title="タスク: ${t.title}">` +
-                       `<span style="flex-shrink:0;">🔗</span>` +
-                       `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-grow:1; font-weight:500;">${t.title}</span>` +
+        linkBadge += `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; justify-content:space-between; gap:4px; max-width:100%;" title="タスク: ${t.title}">` +
+                       `<div style="display:flex; align-items:center; gap:4px; overflow:hidden; text-overflow:ellipsis; flex-grow:1;">` +
+                         `<span style="flex-shrink:0;">🔗</span>` +
+                         `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">${t.title}</span>` +
+                       `</div>` +
+                       `<span style="cursor:pointer; color:rgba(255,255,255,0.22); font-size:10px; font-weight:700; padding:0 3px; flex-shrink:0; pointer-events:auto;" ` +
+                             `onclick="event.stopPropagation(); removeNoteRelation('${note.id}', 'task', '${t.id}')" ` +
+                             `onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(255,255,255,0.22)'" title="紐づけ解除">×</span>` +
                      `</div>`;
       });
       linkedSchedules.forEach(s => {
-        linkBadge += `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:4px;" title="予定: ${s.title}">` +
-                       `<span style="flex-shrink:0;">📅</span>` +
-                       `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-grow:1; font-weight:500;">${s.title}</span>` +
+        linkBadge += `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; justify-content:space-between; gap:4px; max-width:100%;" title="予定: ${s.title}">` +
+                       `<div style="display:flex; align-items:center; gap:4px; overflow:hidden; text-overflow:ellipsis; flex-grow:1;">` +
+                         `<span style="flex-shrink:0;">📅</span>` +
+                         `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">${s.title}</span>` +
+                       `</div>` +
+                       `<span style="cursor:pointer; color:rgba(255,255,255,0.22); font-size:10px; font-weight:700; padding:0 3px; flex-shrink:0; pointer-events:auto;" ` +
+                             `onclick="event.stopPropagation(); removeNoteRelation('${note.id}', 'schedule', '${s.id}')" ` +
+                             `onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(255,255,255,0.22)'" title="紐づけ解除">×</span>` +
                      `</div>`;
       });
       linkBadge += `</div>`;
@@ -4765,8 +4803,34 @@ function viewLinkedNote(noteId) {
   selectNote(noteId);
 }
 
+function removeNoteRelation(noteId, type, itemId) {
+  const note = appState.notes.find(n => n.id === noteId);
+  if (!note) return;
+
+  let updated = false;
+  if (type === "task") {
+    if (note.taskIds) {
+      const prevLen = note.taskIds.length;
+      note.taskIds = note.taskIds.filter(id => id !== itemId);
+      if (note.taskIds.length !== prevLen) updated = true;
+    }
+  } else if (type === "schedule") {
+    if (note.scheduleIds) {
+      const prevLen = note.scheduleIds.length;
+      note.scheduleIds = note.scheduleIds.filter(id => id !== itemId);
+      if (note.scheduleIds.length !== prevLen) updated = true;
+    }
+  }
+
+  if (updated) {
+    saveData();
+    renderAll();
+  }
+}
+
 window.initDashboardNote = initDashboardNote;
 window.linkTodayNoteToItem = linkTodayNoteToItem;
 window.linkNoteToItem = linkNoteToItem;
 window.renderDashboardStickyNotes = renderDashboardStickyNotes;
 window.viewLinkedNote = viewLinkedNote;
+window.removeNoteRelation = removeNoteRelation;
