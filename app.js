@@ -1821,6 +1821,29 @@ function renderKanban() {
     card.addEventListener("dragend", () => {
       card.classList.remove("dragging");
     });
+
+    // ドラッグ＆ドロップによるメモ紐付け
+    card.addEventListener("dragover", e => {
+      if (e.dataTransfer.types.includes("text/plain")) {
+        e.preventDefault();
+        card.classList.add("drag-over-note");
+      }
+    });
+    card.addEventListener("dragleave", () => {
+      card.classList.remove("drag-over-note");
+    });
+    card.addEventListener("drop", e => {
+      e.preventDefault();
+      card.classList.remove("drag-over-note");
+      const dragData = e.dataTransfer.getData("text/plain");
+      if (dragData === "note-today") {
+        linkTodayNoteToItem("task", task.id);
+      } else if (dragData.startsWith("note-id:")) {
+        const noteId = dragData.replace("note-id:", "");
+        linkNoteToItem(noteId, "task", task.id);
+      }
+    });
+
     card.addEventListener("click", () => openEditTaskModal(task.id));
     card.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
