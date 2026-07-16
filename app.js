@@ -2815,11 +2815,7 @@ function setupEventListeners() {
     updateParentDropdown(e.target.value, "none", document.getElementById("task-id").value);
   });
 
-  // サブタスク追加
-  const btnAddSubtask = document.getElementById("btn-add-subtask");
-  if (btnAddSubtask) btnAddSubtask.addEventListener("click", handleAddSubtaskInModal);
-  const inputSubtask = document.getElementById("new-subtask-title");
-  if (inputSubtask) inputSubtask.addEventListener("keydown", e => { if(e.key==="Enter"){e.preventDefault();handleAddSubtaskInModal();} });
+
 
   // スケジュールフォーム
   const schForm = document.getElementById("schedule-form");
