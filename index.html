@@ -86,7 +86,7 @@
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.1.5</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.1.6</div>
       </div>
     </aside>
 
@@ -168,11 +168,14 @@
             <!-- カラム3: 今日のメモ -->
             <div class="grid-col-right">
               <div class="card card-notes-today glass" style="display: flex; flex-direction: column; height: 100%;">
-                <div class="card-header" style="padding: 10px 14px; flex-shrink: 0;">
-                  <div class="header-left">
+                <div class="card-header" style="padding: 10px 14px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
+                  <div class="header-left" style="display: flex; align-items: center; gap: 6px;">
                     <i data-lucide="notebook-pen" style="color:#a855f7;"></i>
                     <h2>今日のメモ</h2>
                   </div>
+                  <button class="btn btn-icon btn-sm" id="btn-archive-all-notes" title="すべてのメモを一括アーカイブ" style="cursor: pointer; background: transparent; border: none; color: rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all 0.2s;">
+                    <i data-lucide="archive" style="width: 14px; height: 14px;"></i>
+                  </button>
                 </div>
 
                 <!-- 入力エリア (コンパクト固定) -->
@@ -925,6 +928,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- JavaScript -->
-  <script src="app.js?v=1.1.5"></script>
+  <script src="app.js?v=1.1.6"></script>
 </body>
 </html>

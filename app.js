@@ -4509,6 +4509,23 @@ function initDashboardNote() {
       });
     }
 
+    const archiveAllBtn = document.getElementById("btn-archive-all-notes");
+    if (archiveAllBtn) {
+      archiveAllBtn.addEventListener("click", () => {
+        const todayStr = formatDate(appState.currentDate);
+        const todayNotes = appState.notes.filter(n => n.date === todayStr && !n.dashboardArchived);
+        if (todayNotes.length === 0) return;
+        
+        if (confirm("今日作成されたすべてのメモを非表示（アーカイブ）にしますか？")) {
+          todayNotes.forEach(n => {
+            n.dashboardArchived = true;
+          });
+          saveData();
+          renderDashboardStickyNotes();
+        }
+      });
+    }
+
     textarea.dataset.listenerInitialized = "true";
   }
 
