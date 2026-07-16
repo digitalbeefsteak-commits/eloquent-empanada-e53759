@@ -650,6 +650,7 @@ let appState = {
   kanbanFilterPriority: "all"
 };
 
+let activeNoteId = null;
 let expandedMilestones = new Set();
 let lastTasksState = null;
 
@@ -3983,7 +3984,6 @@ window.deployDataToFirebase = deployDataToFirebase;
 // NOTES CORE LOGIC
 // ==========================================================================
 
-let activeNoteId = null;
 let currentRelationType = null; // 'task' or 'schedule'
 let pendingRelations = { taskIds: [], scheduleIds: [] };
 
