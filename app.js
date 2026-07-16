@@ -2876,9 +2876,9 @@ function setupEventListeners() {
     todoListEl.addEventListener("drop", e => {
       e.preventDefault();
       todoListEl.style.background = "";
-      const taskId = e.dataTransfer.getData("text/plain");
-      if (!taskId) return;
-      const task = appState.tasks.find(t => t.id === taskId);
+      const dragData = e.dataTransfer.getData("text/plain");
+      if (!dragData || dragData.startsWith("note-id:") || dragData === "note-today") return;
+      const task = appState.tasks.find(t => t.id === dragData);
       if (task) {
         task.assignedTimeSlot = null;
         saveData();
