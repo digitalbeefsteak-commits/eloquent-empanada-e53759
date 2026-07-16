@@ -1198,9 +1198,17 @@ function renderTodayTasks() {
       dateStyle = "background:rgba(239, 68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:rgba(248,113,113,0.9);font-weight:700;";
     }
 
+    const taskNotes = appState.notes.filter(n => n.taskIds && n.taskIds.includes(task.id));
+    let noteIconHTML = "";
+    if (taskNotes.length > 0) {
+      const targetNoteId = taskNotes[0].id;
+      noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:12px; margin-left:4px; padding:2px; display:inline-flex; align-items:center; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); event.preventDefault(); viewLinkedNote('${targetNoteId}')">📝</span>`;
+    }
+
     li.innerHTML = `
       ${goalBadgeHTML(goal, goalShort)}
       <span onclick="openEditTaskModal('${task.id}')" style="flex-grow:1;font-size:12.5px;color:${isOverdue ? "rgba(248,113,113,0.9)" : "rgba(255,255,255,0.88)"};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;">${task.title}</span>
+      ${noteIconHTML}
       ${task.duedate ? `<span style="${dateStyle}font-size:10px;font-family:monospace;padding:1px 5px;border-radius:3px;min-width:62px;text-align:center;flex-shrink:0;margin-right:2px;">${formatDateDisplay(task.duedate)}</span>` : `<span style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.2);font-size:10px;font-family:monospace;padding:1px 5px;border-radius:3px;min-width:62px;text-align:center;flex-shrink:0;margin-right:2px;">-</span>`}
       ${taskQuickBtns(task.id)}
     `;
@@ -1380,10 +1388,18 @@ function renderTimeline() {
             ? `<span style="font-size:8px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.2);padding:0px 3px;border-radius:2px;flex-shrink:0;">遅延</span>`
             : "";
 
+          const taskNotes = appState.notes.filter(n => n.taskIds && n.taskIds.includes(t.id));
+          let noteIconHTML = "";
+          if (taskNotes.length > 0) {
+            const targetNoteId = taskNotes[0].id;
+            noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:10px; margin-left:4px; padding:2px; display:inline-flex; align-items:center; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); event.preventDefault(); viewLinkedNote('${targetNoteId}')">📝</span>`;
+          }
+
           taskRow.innerHTML = `
             ${overdueTag}
             ${goalBadgeHTML(g, gs, "small")}
             <span onclick="openEditTaskModal('${t.id}')" style="flex-grow:1;font-size:11px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${titleColor};">${t.title}</span>
+            ${noteIconHTML}
             ${taskQuickBtns(t.id)}
           `;
           taskRow.addEventListener("dragstart", e => {
@@ -1552,9 +1568,17 @@ function renderTimeline() {
       openEditScheduleModal(s.id);
     };
 
+    const schedNotes = appState.notes.filter(n => n.scheduleIds && n.scheduleIds.includes(s.id));
+    let noteIconHTML = "";
+    if (schedNotes.length > 0) {
+      const targetNoteId = schedNotes[0].id;
+      noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:11px; position:absolute; right:6px; top:4px; z-index:15; display:inline-flex; align-items:center; padding:2px; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); event.preventDefault(); viewLinkedNote('${targetNoteId}')">📝</span>`;
+    }
+
     eventEl.innerHTML = `
-      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.title}</div>
-      <div style="font-size:9.5px;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.startTime}–${s.endTime}</div>
+      ${noteIconHTML}
+      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;">${s.title}</div>
+      <div style="font-size:9.5px;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;">${s.startTime}–${s.endTime}</div>
     `;
 
     // ドラッグ＆ドロップによるメモ紐付け
@@ -1860,10 +1884,17 @@ function renderKanban() {
       }
     });
 
+    const taskNotes = appState.notes.filter(n => n.taskIds && n.taskIds.includes(task.id));
+    let noteIconHTML = "";
+    if (taskNotes.length > 0) {
+      const targetNoteId = taskNotes[0].id;
+      noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:11px; display:inline-flex; align-items:center; padding:2px; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); viewLinkedNote('${targetNoteId}')">📝</span>`;
+    }
+
     card.addEventListener("click", () => openEditTaskModal(task.id));
     card.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="font-size:13px;font-weight:500;margin-bottom:6px;${titleColor ? `color:${titleColor};` : ""}">${task.title}</div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:6px;${titleColor ? `color:${titleColor};` : ""}">${task.title} ${noteIconHTML}</div>
         <button title="削除" onclick="event.stopPropagation(); quickDeleteTask('${task.id}')"
           style="background:transparent;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;display:inline-flex;align-items:center;justify-content:center;transition:color 0.15s;margin-top:-2px;margin-right:-4px;flex-shrink:0;"
           onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(255,255,255,0.2)'">
@@ -4462,11 +4493,30 @@ function renderDashboardStickyNotes() {
     const rest = note.content.trim().split("\n").slice(1).join("\n");
     const timeStr = note.createdAt ? new Date(note.createdAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "";
 
-    const linkedTask = note.taskIds && note.taskIds.length > 0;
-    const linkedSch  = note.scheduleIds && note.scheduleIds.length > 0;
-    const linkBadge  = (linkedTask || linkedSch)
-      ? `<span style="color:rgba(168,85,247,0.8); font-size:10px;">🔗 紐づき${linkedTask ? " タスク" : ""}${linkedSch ? " 予定" : ""}</span>`
-      : "";
+    const linkedTasks = (note.taskIds || [])
+      .map(id => appState.tasks.find(t => t.id === id))
+      .filter(Boolean);
+    const linkedSchedules = (note.scheduleIds || [])
+      .map(id => appState.schedules.find(s => s.id === id))
+      .filter(Boolean);
+
+    let linkBadge = "";
+    if (linkedTasks.length > 0 || linkedSchedules.length > 0) {
+      linkBadge = `<div class="sticky-note-links" style="display:flex; flex-direction:column; gap:3px; margin:6px 0 8px 0; border-top:1px solid rgba(251,191,36,0.15); padding-top:6px; font-size:10px; color:rgba(168,85,247,0.95); max-width:100%; overflow:hidden;">`;
+      linkedTasks.forEach(t => {
+        linkBadge += `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:4px;" title="タスク: ${t.title}">` +
+                       `<span style="flex-shrink:0;">🔗</span>` +
+                       `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-grow:1; font-weight:500;">${t.title}</span>` +
+                     `</div>`;
+      });
+      linkedSchedules.forEach(s => {
+        linkBadge += `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:4px;" title="予定: ${s.title}">` +
+                       `<span style="flex-shrink:0;">📅</span>` +
+                       `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-grow:1; font-weight:500;">${s.title}</span>` +
+                     `</div>`;
+      });
+      linkBadge += `</div>`;
+    }
 
     // ---- 表示モードのHTMLを生成する関数 ----
     function renderViewMode() {
@@ -4478,9 +4528,10 @@ function renderDashboardStickyNotes() {
 
       card.innerHTML =
         `<div class="sticky-note-content" style="pointer-events:none;">${contentHtml}</div>` +
+        linkBadge +
         `<div class="sticky-note-meta">` +
           `<span style="display:flex;align-items:center;gap:6px;">` +
-            `<span>${timeStr}</span>${linkBadge}` +
+            `<span>${timeStr}</span>` +
           `</span>` +
           `<div class="sticky-note-actions">` +
             `<button class="sticky-note-btn archive" data-id="${note.id}" title="ダッシュボードから非表示">` +
@@ -4708,7 +4759,14 @@ function linkTodayNoteToItem(type, itemId) {
   linkNoteToItem(note.id, type, itemId);
 }
 
+function viewLinkedNote(noteId) {
+  closeAllModals();
+  switchView("notes");
+  selectNote(noteId);
+}
+
 window.initDashboardNote = initDashboardNote;
 window.linkTodayNoteToItem = linkTodayNoteToItem;
 window.linkNoteToItem = linkNoteToItem;
 window.renderDashboardStickyNotes = renderDashboardStickyNotes;
+window.viewLinkedNote = viewLinkedNote;
