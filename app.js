@@ -4600,8 +4600,12 @@ function renderDashboardStickyNotes() {
       e.dataTransfer.setData("application/x-lifeorbit-note", note.id);
       e.dataTransfer.effectAllowed = "link";
       card.style.opacity = "0.5";
+      document.body.classList.add("dragging-note");
     });
-    card.addEventListener("dragend", () => { card.style.opacity = ""; });
+    card.addEventListener("dragend", () => {
+      card.style.opacity = "";
+      document.body.classList.remove("dragging-note");
+    });
 
     container.appendChild(card);
   });

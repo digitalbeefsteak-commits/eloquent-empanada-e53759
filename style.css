@@ -2374,14 +2374,14 @@ label {
 }
 
 /* ドラッグ＆ドロップ時に子要素がイベントを奪って drop を阻害するのを防ぐ */
-.kanban-card > *,
-.todo-item > * {
+.dragging-note .kanban-card > *,
+.dragging-note .todo-item > * {
   pointer-events: none;
 }
-.kanban-card button,
-.kanban-card input,
-.todo-item button,
-.todo-item input,
-.todo-item a {
+.dragging-note .kanban-card button,
+.dragging-note .kanban-card input,
+.dragging-note .todo-item button,
+.dragging-note .todo-item input,
+.dragging-note .todo-item a {
   pointer-events: auto;
 }
