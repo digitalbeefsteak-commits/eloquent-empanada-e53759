@@ -1132,36 +1132,24 @@ function goalBadgeHTML(goal, shortName, size = "normal") {
 }
 
 // タスク用クイックアクションボタンHTML生成
-// タスク用クイックアクションボタンHTML生成
 function taskQuickBtns(taskId) {
-  const t = appState.tasks.find(x => x.id === taskId);
-  const currentStatus = t ? t.status : "today";
-  
-  const statusSelect = `
-    <select onchange="changeTaskStatusDropdown('${taskId}', this.value)" style="
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 4px;
-      color: rgba(255,255,255,0.8);
-      font-size: 11px;
-      font-family: inherit;
-      padding: 0 6px;
-      cursor: pointer;
-      outline: none;
-      height: 26px;
-      transition: all 0.15s;
-    " onmouseover="this.style.borderColor='rgba(255,255,255,0.2)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';">
-      <option value="today" ${currentStatus === 'today' ? 'selected' : ''}>今日</option>
-      <option value="this_week" ${currentStatus === 'this_week' ? 'selected' : ''}>今週</option>
-      <option value="next_week_and_later" ${currentStatus === 'next_week_and_later' ? 'selected' : ''}>来週以降</option>
-      <option value="waiting" ${currentStatus === 'waiting' ? 'selected' : ''}>対応待ち</option>
-      <option value="completed" ${currentStatus === 'completed' ? 'selected' : ''}>完了</option>
-    </select>
-  `;
-
   return `
-    <div class="task-quick-btns" style="display:flex;gap:4px;flex-shrink:0;align-items:center;" onclick="event.stopPropagation()">
-      ${statusSelect}
+    <div class="task-quick-btns" style="display:flex;gap:3px;flex-shrink:0;" onclick="event.stopPropagation()">
+      <button title="完了" onclick="toggleTaskCompleted('${taskId}')"
+        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.5);padding:0;transition:all 0.15s;"
+        onmouseover="this.style.background='rgba(52,211,153,0.25)';this.style.color='#34d399';" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)';">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </button>
+      <button title="対応待ちに移動" onclick="changeTaskStatus('${taskId}','waiting',event)"
+        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.5);padding:0;transition:all 0.15s;"
+        onmouseover="this.style.background='rgba(251,191,36,0.25)';this.style.color='#fbbf24';" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)';">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+      </button>
+      <button title="今週に先送り" onclick="changeTaskStatus('${taskId}','this_week',event)"
+        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.5);padding:0;transition:all 0.15s;"
+        onmouseover="this.style.background='rgba(99,102,241,0.25)';this.style.color='#818cf8';" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)';">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+      </button>
       <button title="削除" onclick="quickDeleteTask('${taskId}')"
         style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.5);padding:0;transition:all 0.15s;"
         onmouseover="this.style.background='rgba(239,68,68,0.25)';this.style.color='#f87171';" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)';">
@@ -4848,34 +4836,3 @@ window.linkNoteToItem = linkNoteToItem;
 window.renderDashboardStickyNotes = renderDashboardStickyNotes;
 window.viewLinkedNote = viewLinkedNote;
 window.removeNoteRelation = removeNoteRelation;
-
-function changeScheduleDate(id, newDate) {
-  const s = appState.schedules.find(item => item.id === id);
-  if (!s) return;
-  saveToUndoStack();
-  s.startDate = newDate;
-  s.endDate = newDate;
-  saveData();
-  renderAll();
-}
-
-function changeTaskStatusDropdown(taskId, newStatus) {
-  const task = appState.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  saveToUndoStack();
-  const old = task.status;
-  task.status = newStatus;
-  if (newStatus === "completed" && old !== "completed") {
-    task.completedAt = new Date().toISOString();
-  } else if (newStatus !== "completed") {
-    task.completedAt = null;
-  }
-  if (newStatus !== "today") {
-    task.assignedTimeSlot = null;
-  }
-  saveData();
-  renderAll();
-}
-
-window.changeScheduleDate = changeScheduleDate;
-window.changeTaskStatusDropdown = changeTaskStatusDropdown;
