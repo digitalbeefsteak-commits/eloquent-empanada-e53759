@@ -797,7 +797,10 @@ function formatDate(d) {
 }
 
 function formatDateDisplay(str) {
-  return str ? str.replace(/-/g, ".") : "";
+  if (str instanceof Date) {
+    str = formatDate(str);
+  }
+  return str ? String(str).replace(/-/g, ".") : "";
 }
 
 function parseLocalDate(str) {
