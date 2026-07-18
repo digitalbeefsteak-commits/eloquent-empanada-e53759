@@ -3,9 +3,9 @@
   "name": "LifeOrbit - AIタスク&カレンダー",
   "icons": [
     {
-      "src": "orbit-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "orbit-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
   "start_url": "./index.html",
