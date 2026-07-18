@@ -2802,4 +2802,20 @@ label {
     font-weight: 500 !important;
     flex-shrink: 0 !important;
   }
+
+  /* ヘッダータイトル・サブタイトルのSP表示最適化 */
+  .header-title-area {
+    padding-right: 12px;
+  }
+  #view-title {
+    font-size: 20px !important;
+    white-space: normal !important;
+  }
+  #view-subtitle {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+  }
 }
