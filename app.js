@@ -2473,7 +2473,7 @@ function populateTaskModal(task, defaultGoalId) {
   updateActiveGoalBadge(goalSel.value);
   document.getElementById("task-status").value = isEdit ? task.status : "today";
   document.getElementById("task-priority").value = isEdit ? task.priority : "medium";
-  document.getElementById("task-duedate").value = isEdit ? (task.duedate || "") : "";
+  document.getElementById("task-duedate").value = isEdit ? (task.duedate || "") : formatDate(appState.currentDate);
   // 関連メモ (Notes) の表示
   const relatedNotesSection = document.getElementById("task-related-notes-section");
   const relatedNotesList = document.getElementById("task-related-notes-list");
