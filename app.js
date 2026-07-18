@@ -2900,14 +2900,25 @@ function switchView(viewName) {
     else sec.classList.remove("active");
   });
   // ヘッダータイトル更新
-  const isSP = window.innerWidth <= 768;
-  const titles = isSP 
-    ? { dashboard: "ダッシュボード", goals: "目標", tasks: "タスク", calendar: "予定", review: "レビュー", notes: "メモ", settings: "設定" }
-    : { dashboard: "ダッシュボード", goals: "目標 (Goals)", tasks: "タスク (Tasks)", calendar: "カレンダー", review: "レビュー", notes: "メモ (Notes)", settings: "設定・バックアップ" };
+  const titles = { 
+    dashboard: "ダッシュボード", 
+    goals: "目標", 
+    tasks: "タスク", 
+    calendar: "予定", 
+    review: "振り返り", 
+    notes: "メモ", 
+    settings: "設定" 
+  };
   
-  const subs = isSP
-    ? { dashboard: "今日の軌道と目標の進捗状況", goals: "目標管理", tasks: "日々のタスク管理と進捗状況の確認", calendar: "今日のスケジュール", review: "実績の振り返り", notes: "日々のログや気づき", settings: "データ管理" }
-    : { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "目標達成に向けたデイリータスクとカンバンでの進捗管理", calendar: "スケジュールとカレンダー連携", review: "活動実績の振り返りと未完了タスクの棚卸し", notes: "日々のログや気づきの書き散らしと管理", settings: "データの管理とバックアップ" };
+  const subs = { 
+    dashboard: "今日の予定とタスクの進捗", 
+    goals: "目標とマイルストーンの管理", 
+    tasks: "タスクの進捗管理", 
+    calendar: "予定の管理とカレンダー連携", 
+    review: "活動実績の振り返り", 
+    notes: "メモの作成と管理", 
+    settings: "データの管理とバックアップ" 
+  };
 
   const titleEl = document.getElementById("view-title");
   if (titleEl) titleEl.textContent = titles[viewName] || viewName;

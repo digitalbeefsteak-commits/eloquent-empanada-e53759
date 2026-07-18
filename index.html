@@ -55,27 +55,27 @@
         </button>
         <button class="nav-item" data-view="goals" id="nav-goals">
           <i data-lucide="target"></i>
-          <span>目標 (Goals)</span>
+          <span>目標</span>
         </button>
         <button class="nav-item" data-view="tasks" id="nav-tasks">
           <i data-lucide="check-square"></i>
-          <span>タスク (Tasks)</span>
+          <span>タスク</span>
         </button>
         <button class="nav-item" data-view="calendar" id="nav-calendar">
           <i data-lucide="calendar"></i>
-          <span>カレンダー</span>
+          <span>予定</span>
         </button>
         <button class="nav-item" data-view="review" id="nav-review">
           <i data-lucide="clipboard-check"></i>
-          <span>レビュー</span>
+          <span>振り返り</span>
         </button>
         <button class="nav-item" data-view="notes" id="nav-notes">
           <i data-lucide="notebook-pen"></i>
-          <span>メモ (Notes)</span>
+          <span>メモ</span>
         </button>
         <button class="nav-item" data-view="settings" id="nav-settings">
           <i data-lucide="settings"></i>
-          <span>設定・バックアップ</span>
+          <span>設定</span>
         </button>
       </nav>
 
@@ -92,7 +92,7 @@
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.5.6</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.5.7</div>
       </div>
     </aside>
 
@@ -349,8 +349,8 @@
           <div class="ics-drop-zone glass" id="ics-drop-zone">
             <i data-lucide="file-up" class="drop-icon"></i>
             <div class="drop-text">
-              <h3>外部カレンダー スケジュールインポート</h3>
-              <p>グループウェア等のカレンダーからエクスポートした <strong>.ics ファイル</strong> をここにドラッグ＆ドロップ、または <span class="browse-link" id="browse-ics-link">ファイルを選択</span> して読み込ませてください。</p>
+              <h3>予定のインポート (iCalendar)</h3>
+              <p>.ics ファイルをここにドラッグ＆ドロップするか、<span class="browse-link" id="browse-ics-link">ファイルを選択</span> して読み込んでください。</p>
             </div>
             <input type="file" id="ics-file-input" accept=".ics" style="display:none;">
           </div>
@@ -545,15 +545,15 @@
           </div>
         </section>
 
-        <!-- VIEW: 設定・バックアップ -->
+        <!-- VIEW: 設定 -->
         <section id="view-settings" class="view-section">
           <div class="settings-grid">
             <div class="card glass">
               <div class="card-header">
-                <h2>データバックアップ (エクスポート・インポート)</h2>
+                <h2>バックアップ</h2>
               </div>
               <div class="card-body">
-                <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:0;">LifeOrbitのデータは、お使いのブラウザ（localStorage）または同期中のオンラインDB（Firebase）に保存されています。万が一のバックアップやデータの移行のために、すべてのデータをJSONファイルとしてローカルPCにダウンロードできます。※オンライン同期中は、サーバー上の最新データがダウンロードされます。</p>
+                <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:0;">データのバックアップをJSONファイルとしてエクスポート、またはインポートすることができます。</p>
                 <div class="settings-actions">
                   <button class="btn btn-primary" id="btn-export-data">
                     <i data-lucide="download"></i>
@@ -565,7 +565,7 @@
                   </button>
                   <button class="btn btn-secondary" id="btn-import-text-trigger" title="コピーしたJSONテキストを直接貼り付けます">
                     <i data-lucide="clipboard"></i>
-                    <span>テキストを貼り付けてインポート</span>
+                    <span>テキストからインポート</span>
                   </button>
                   <input type="file" id="import-file-input" accept=".json" style="display:none;">
                 </div>
@@ -574,12 +574,11 @@
 
             <div class="card glass">
               <div class="card-header">
-                <h2>☁️ 端末間クラウド同期（合言葉で繋がる！）</h2>
+                <h2>クラウド同期</h2>
               </div>
               <div class="card-body">
                 <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:0;line-height:1.4;">
-                  「合言葉」を共有するだけで、別のパソコンやスマホとデータを自動で同期・共有できます。<br>
-                  <strong style="color:var(--accent);">※同じ合言葉を設定した端末同士でデータが同期されます。</strong>
+                  同期コードを使用することで、複数の端末間でデータを自動同期できます。
                 </p>
                 <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
                   <div id="sync-status-text" style="font-size:12px;color:rgba(255,255,255,0.75);padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.06);line-height:1.4;">
@@ -588,7 +587,7 @@
                   
                   <!-- この端末の同期キー表示 -->
                   <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:12px;">
-                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600;">この端末の同期コード（合言葉）</label>
+                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600;">この端末の同期コード</label>
                     <div style="display:flex;align-items:center;gap:8px;">
                       <input type="text" id="my-sync-code" readonly style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:8px;color:#10b981;font-family:monospace;font-weight:bold;font-size:13px;text-align:center;" value="読み込み中...">
                       <button class="btn btn-sm" onclick="copySyncKey()" style="padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;color:#fff;display:inline-flex;align-items:center;gap:4px;border-radius:4px;">
@@ -599,7 +598,7 @@
 
                   <!-- 別の端末から引き継ぐ -->
                   <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:6px;padding:12px;">
-                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600;">別の端末からデータを引き継ぐ（インポート）</label>
+                    <label style="display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600;">他の端末のデータを引き継ぐ (インポート)</label>
                     <div style="display:flex;align-items:center;gap:8px;">
                       <input type="text" id="import-sync-code-input" placeholder="例: orbit-xxxx-xxxx" style="flex:1;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:8px;color:#fff;font-size:12px;">
                       <button class="btn btn-sm" onclick="importSyncData()" style="padding:8px 12px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);cursor:pointer;color:#10b981;font-weight:600;display:inline-flex;align-items:center;gap:4px;border-radius:4px;">
@@ -607,14 +606,14 @@
                       </button>
                     </div>
                     <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:6px 0 0 0;line-height:1.3;">
-                      ※引き継ぐと、この端末の現在のデータは上書きされ、入力したコードの端末のデータと同期されます。
+                      ※引き継ぎを実行すると、この端末の現在のデータは上書きされます。
                     </p>
                   </div>
 
                   <!-- 同期解除ボタン -->
                   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
                     <button class="btn btn-sm" onclick="disconnectSync()" style="cursor:pointer;padding:6px 12px;font-size:11px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;justify-content:center;border-radius:4px;display:inline-flex;align-items:center;gap:4px;">
-                      <i data-lucide="log-out" style="width:11.5px;height:11.5px;"></i> 同期を解除する
+                      <i data-lucide="log-out" style="width:11.5px;height:11.5px;"></i> 同期解除
                     </button>
                   </div>
 
@@ -981,6 +980,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- JavaScript -->
-  <script src="app.js?v=1.5.6"></script>
+  <script src="app.js?v=1.5.7"></script>
 </body>
 </html>
