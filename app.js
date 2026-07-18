@@ -2875,14 +2875,10 @@ function updateSyncDisplay() {
 function switchView(viewName) {
   appState.activeView = viewName;
 
-  // tasksビューがアクティブな場合はサブタイトルを非表示にする
+  // サブタイトル（説明テキスト）は常に表示する
   const subEl = document.getElementById("view-subtitle");
   if (subEl) {
-    if (viewName === "tasks") {
-      subEl.style.display = "none";
-    } else {
-      subEl.style.display = "block";
-    }
+    subEl.style.display = "block";
   }
 
   if (viewName === "goals") {
@@ -2910,8 +2906,8 @@ function switchView(viewName) {
     : { dashboard: "ダッシュボード", goals: "目標 (Goals)", tasks: "タスク (Tasks)", calendar: "カレンダー", review: "レビュー", notes: "メモ (Notes)", settings: "設定・バックアップ" };
   
   const subs = isSP
-    ? { dashboard: "今日の軌道と目標の進捗状況", goals: "目標管理", tasks: "タスク一覧", calendar: "今日のスケジュール", review: "実績の振り返り", notes: "日々のログや気づき", settings: "データ管理" }
-    : { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "タスクのカンバン管理", calendar: "スケジュールとカレンダー連携", review: "活動実績の振り返りと未完了タスクの棚卸し", notes: "日々のログや気づきの書き散らしと管理", settings: "データの管理とバックアップ" };
+    ? { dashboard: "今日の軌道と目標の進捗状況", goals: "目標管理", tasks: "日々のタスク管理と進捗状況の確認", calendar: "今日のスケジュール", review: "実績の振り返り", notes: "日々のログや気づき", settings: "データ管理" }
+    : { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "目標達成に向けたデイリータスクとカンバンでの進捗管理", calendar: "スケジュールとカレンダー連携", review: "活動実績の振り返りと未完了タスクの棚卸し", notes: "日々のログや気づきの書き散らしと管理", settings: "データの管理とバックアップ" };
 
   const titleEl = document.getElementById("view-title");
   if (titleEl) titleEl.textContent = titles[viewName] || viewName;
