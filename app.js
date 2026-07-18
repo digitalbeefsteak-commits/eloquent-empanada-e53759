@@ -1434,12 +1434,15 @@ function renderTimeline() {
           });
           taskRow.addEventListener("dragend", () => { taskRow.style.opacity = ""; });
 
-          // ドラッグ＆ドロップによるメモ紐付け
+          // ドラッグ＆ドロップによるメモ紐付けおよびタスクのセル間移動のバブリング処理
           taskRow.addEventListener("dragover", e => {
             if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
               e.preventDefault();
               e.dataTransfer.dropEffect = "link";
               taskRow.classList.add("drag-over-note");
+            } else if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
             }
           });
           taskRow.addEventListener("dragleave", () => {
@@ -1453,6 +1456,8 @@ function renderTimeline() {
             if (dragData.startsWith("note-id:")) {
               const noteId = dragData.replace("note-id:", "");
               linkNoteToItem(noteId, "task", t.id);
+            } else if (dragData && !dragData.startsWith("note-id:") && dragData !== "note-today") {
+              dropOnTimeline(e, slot);
             }
           });
 
