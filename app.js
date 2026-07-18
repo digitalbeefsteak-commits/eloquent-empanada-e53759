@@ -1379,6 +1379,7 @@ function renderTimeline() {
     timeLabel.innerHTML = `<div>${slot}</div>${nowBadge}`;
 
     // コンテンツ領域
+    const contentDiv = document.createElement("div");
     const paddingStyle = assignedTasks.length > 1 ? "padding: 4px 0;" : "padding: 0;";
     contentDiv.style.cssText = `flex-grow:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;${paddingStyle}box-sizing:border-box;position:relative;z-index:2;`;
 
