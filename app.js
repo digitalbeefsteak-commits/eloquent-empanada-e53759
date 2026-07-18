@@ -3147,50 +3147,6 @@ function setupEventListeners() {
   // 設定ページ
   const btnExport = document.getElementById("btn-export-data");
   if (btnExport) btnExport.addEventListener("click", exportData);
-  
-  const btnExportLogo = document.getElementById("btn-export-logo-png");
-  if (btnExportLogo) {
-    btnExportLogo.addEventListener("click", async () => {
-      try {
-        const response = await fetch("orbit-icon.svg");
-        if (!response.ok) throw new Error("SVGの取得に失敗しました");
-        let svgText = await response.text();
-        // 背景の黒いrectタグを削除して透過させる
-        svgText = svgText.replace(/<rect[^>]*fill="#0d0e12"[^>]*\/>/g, "");
-        
-        const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = 512;
-          canvas.height = 512;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0);
-          
-          try {
-            const pngUrl = canvas.toDataURL("image/png");
-            const a = document.createElement("a");
-            a.href = pngUrl;
-            a.download = "lifeorbit-icon-transparent.png";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          } catch (err) {
-            alert("PNGへの書き出しに失敗しました: " + err.message);
-          }
-        };
-        img.onerror = () => {
-          alert("画像のレンダリングに失敗しました");
-        };
-        img.src = url;
-      } catch (error) {
-        alert("エラー: " + error.message);
-      }
-    });
-  }
   const btnImportTrigger = document.getElementById("btn-import-trigger");
   const importInput = document.getElementById("import-file-input");
   if (btnImportTrigger && importInput) btnImportTrigger.addEventListener("click", () => importInput.click());
