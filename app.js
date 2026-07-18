@@ -1673,7 +1673,6 @@ function renderTimeline() {
     }
   });
 }
-}
 
 
 function dragStartTask(event, taskId) {
