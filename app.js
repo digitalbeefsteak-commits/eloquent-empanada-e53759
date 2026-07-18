@@ -4614,9 +4614,8 @@ function renderDashboardStickyNotes() {
   const container = document.getElementById("dashboard-notes-list");
   if (!container) return;
 
-  const todayStr = formatDate(appState.currentDate);
   const todayNotes = appState.notes
-    .filter(n => n.date === todayStr && !n.dashboardArchived)
+    .filter(n => !n.dashboardArchived)
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
   container.innerHTML = "";
