@@ -1934,11 +1934,11 @@ function renderKanban() {
       card.classList.remove("drag-over-note");
     });
     card.addEventListener("drop", e => {
-      e.preventDefault();
-      e.stopPropagation();
-      card.classList.remove("drag-over-note");
       const dragData = e.dataTransfer.getData("text/plain");
-      if (dragData.startsWith("note-id:")) {
+      if (dragData && dragData.startsWith("note-id:")) {
+        e.preventDefault();
+        e.stopPropagation();
+        card.classList.remove("drag-over-note");
         const noteId = dragData.replace("note-id:", "");
         linkNoteToItem(noteId, "task", task.id);
       }
