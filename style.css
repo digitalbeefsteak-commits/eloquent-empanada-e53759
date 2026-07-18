@@ -2697,3 +2697,97 @@ label {
 .dragging-note .todo-item a {
   pointer-events: auto;
 }
+
+/* ==========================================================================
+   SP NOTES PAGE OVERRIDES (must be at end of file to win cascade)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* クイックメモ入力エリア: SP で表示 */
+  #view-notes .sp-notes-compose {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* メモコンテナを1カラム縦積みに */
+  #view-notes .notes-container {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    gap: 0 !important;
+    max-width: 100% !important;
+    grid-template-columns: none !important;
+  }
+
+  /* メモリスト (サイドバー) を全幅・高さ無制限に */
+  #view-notes .notes-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* 検索欄を非表示 */
+  #view-notes .notes-search-wrapper {
+    display: none !important;
+  }
+
+  /* メモ一覧の高さ制限解除 */
+  #notes-list-container {
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+
+  /* エディタパネルをデフォルト非表示 */
+  #view-notes .notes-editor-panel {
+    display: none !important;
+    width: 100% !important;
+  }
+
+  /* エディタ: オーバーレイ表示中 */
+  #view-notes .notes-editor-panel.sp-editor-open {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 60px !important;
+    z-index: 1100 !important;
+    width: 100% !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+    flex-direction: column !important;
+    background: rgba(8, 13, 22, 0.98) !important;
+    box-shadow: none !important;
+  }
+
+  /* 「一覧に戻る」ボタン: SP エディタ内表示 */
+  #view-notes .sp-editor-close-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-bottom: 14px !important;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: #fff !important;
+    padding: 6px 14px !important;
+    border-radius: 7px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    flex-shrink: 0 !important;
+  }
+}
