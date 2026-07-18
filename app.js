@@ -2941,46 +2941,37 @@ function setupUI() {
 }
 
 function setupEventListeners() {
+  // 日付切り替えヘルパー
+  const changeCurrentDate = (offset) => {
+    const cur = new Date(appState.currentDate);
+    if (offset === 0) {
+      appState.currentDate = new Date();
+    } else {
+      cur.setDate(cur.getDate() + offset);
+      appState.currentDate = cur;
+    }
+    saveData();
+    renderAll();
+  };
+
+  const handleDatePick = (e) => {
+    if (e.target.value) {
+      appState.currentDate = new Date(e.target.value);
+      saveData();
+      renderAll();
+    }
+  };
+
   // ダッシュボード日付切り替え
   const prevBtn = document.getElementById("btn-dashboard-prev-day");
   const nextBtn = document.getElementById("btn-dashboard-next-day");
   const todayBtn = document.getElementById("btn-dashboard-today");
   const datePicker = document.getElementById("dashboard-date-picker");
 
-  if (prevBtn) {
-    prevBtn.addEventListener("click", () => {
-      const cur = new Date(appState.currentDate);
-      cur.setDate(cur.getDate() - 1);
-      appState.currentDate = cur;
-      saveData();
-      renderAll();
-    });
-  }
-  if (nextBtn) {
-    nextBtn.addEventListener("click", () => {
-      const cur = new Date(appState.currentDate);
-      cur.setDate(cur.getDate() + 1);
-      appState.currentDate = cur;
-      saveData();
-      renderAll();
-    });
-  }
-  if (todayBtn) {
-    todayBtn.addEventListener("click", () => {
-      appState.currentDate = new Date();
-      saveData();
-      renderAll();
-    });
-  }
-  if (datePicker) {
-    datePicker.addEventListener("change", (e) => {
-      if (e.target.value) {
-        appState.currentDate = new Date(e.target.value);
-        saveData();
-        renderAll();
-      }
-    });
-  }
+  if (prevBtn) prevBtn.addEventListener("click", () => changeCurrentDate(-1));
+  if (nextBtn) nextBtn.addEventListener("click", () => changeCurrentDate(1));
+  if (todayBtn) todayBtn.addEventListener("click", () => changeCurrentDate(0));
+  if (datePicker) datePicker.addEventListener("change", handleDatePick);
 
   // カレンダー予定日付切り替え (SP用)
   const calPrevBtn = document.getElementById("btn-calendar-prev-day");
@@ -2988,40 +2979,10 @@ function setupEventListeners() {
   const calTodayBtn = document.getElementById("btn-calendar-today");
   const calDatePicker = document.getElementById("calendar-date-picker");
 
-  if (calPrevBtn) {
-    calPrevBtn.addEventListener("click", () => {
-      const cur = new Date(appState.currentDate);
-      cur.setDate(cur.getDate() - 1);
-      appState.currentDate = cur;
-      saveData();
-      renderAll();
-    });
-  }
-  if (calNextBtn) {
-    calNextBtn.addEventListener("click", () => {
-      const cur = new Date(appState.currentDate);
-      cur.setDate(cur.getDate() + 1);
-      appState.currentDate = cur;
-      saveData();
-      renderAll();
-    });
-  }
-  if (calTodayBtn) {
-    calTodayBtn.addEventListener("click", () => {
-      appState.currentDate = new Date();
-      saveData();
-      renderAll();
-    });
-  }
-  if (calDatePicker) {
-    calDatePicker.addEventListener("change", (e) => {
-      if (e.target.value) {
-        appState.currentDate = new Date(e.target.value);
-        saveData();
-        renderAll();
-      }
-    });
-  }
+  if (calPrevBtn) calPrevBtn.addEventListener("click", () => changeCurrentDate(-1));
+  if (calNextBtn) calNextBtn.addEventListener("click", () => changeCurrentDate(1));
+  if (calTodayBtn) calTodayBtn.addEventListener("click", () => changeCurrentDate(0));
+  if (calDatePicker) calDatePicker.addEventListener("change", handleDatePick);
 
   // ハンバーガーメニュー
   const btnHamburger = document.getElementById("btn-hamburger");
@@ -4246,20 +4207,7 @@ function initNotesView() {
 
   const btnDeleteNote = document.getElementById("btn-delete-note");
   if (btnDeleteNote) {
-    btnDeleteNote.addEventListener("click", () => {
-      deleteActiveNote();
-      closeSPEditor();
-    });
-  }
-
-  // SP: 保存後にエディタを閉じる
-  const origSave = btnSaveNote;
-  if (origSave) {
-    origSave.addEventListener("click", () => {
-      if (window.innerWidth <= 768) {
-        setTimeout(closeSPEditor, 100);
-      }
-    });
+    btnDeleteNote.addEventListener("click", deleteActiveNote);
   }
 
   // SP専用: クイックメモ入力欄の保存
@@ -4510,6 +4458,10 @@ function saveActiveNote() {
   renderCalendar();
   renderReviewPage();
   if (typeof renderDashboardStickyNotes === "function") renderDashboardStickyNotes();
+
+  if (window.innerWidth <= 768 && typeof closeSPEditor === "function") {
+    closeSPEditor();
+  }
 }
 
 function deleteActiveNote() {
@@ -4529,6 +4481,10 @@ function deleteActiveNote() {
   
   renderCalendar();
   renderReviewPage();
+
+  if (window.innerWidth <= 768 && typeof closeSPEditor === "function") {
+    closeSPEditor();
+  }
 }
 
 function renderRelations() {
