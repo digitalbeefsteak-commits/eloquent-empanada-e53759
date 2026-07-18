@@ -92,7 +92,7 @@
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.4.1</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.4.2</div>
       </div>
     </aside>
 
@@ -457,6 +457,14 @@
 
         <!-- VIEW: メモ (Notes) -->
         <section id="view-notes" class="view-section">
+          <!-- SP専用: クイック入力エリア（PC非表示） -->
+          <div class="sp-notes-compose glass" id="sp-notes-compose">
+            <textarea id="sp-note-textarea" placeholder="新しいメモを入力... (1行目がタイトルになります)" rows="3"></textarea>
+            <button class="btn btn-accent btn-sm" id="sp-btn-save-note">
+              <i data-lucide="plus" style="width:13px;height:13px;"></i> 追加
+            </button>
+          </div>
+
           <div class="notes-container">
             <!-- 左側: リスト＆検索 -->
             <div class="notes-sidebar">
@@ -464,7 +472,7 @@
                 <i data-lucide="search" class="search-icon" style="width:14px;height:14px;position:absolute;left:10px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.35);"></i>
                 <input type="search" id="notes-search-input" placeholder="メモを検索..." style="width:100%;padding:8px 12px 8px 30px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;font-size:12px;outline:none;">
               </div>
-              <button class="btn btn-sm btn-accent" id="btn-new-note" style="width: 100%; margin-bottom: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <button class="btn btn-sm btn-accent sp-hidden-on-sp" id="btn-new-note" style="width: 100%; margin-bottom: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="plus" style="width:14px;height:14px;"></i> 新規メモ作成
               </button>
               <div class="notes-list" id="notes-list-container" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex-grow:1;max-height:calc(100vh - 250px);">
@@ -950,6 +958,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- JavaScript -->
-  <script src="app.js?v=1.4.1"></script>
+  <script src="app.js?v=1.4.2"></script>
 </body>
 </html>

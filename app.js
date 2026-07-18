@@ -4189,7 +4189,46 @@ function initNotesView() {
 
   const btnDeleteNote = document.getElementById("btn-delete-note");
   if (btnDeleteNote) {
-    btnDeleteNote.addEventListener("click", deleteActiveNote);
+    btnDeleteNote.addEventListener("click", () => {
+      deleteActiveNote();
+      closeSPEditor();
+    });
+  }
+
+  // SP: 保存後にエディタを閉じる
+  const origSave = btnSaveNote;
+  if (origSave) {
+    origSave.addEventListener("click", () => {
+      if (window.innerWidth <= 768) {
+        setTimeout(closeSPEditor, 100);
+      }
+    });
+  }
+
+  // SP専用: クイックメモ入力欄の保存
+  const spBtnSaveNote = document.getElementById("sp-btn-save-note");
+  if (spBtnSaveNote) {
+    spBtnSaveNote.addEventListener("click", () => {
+      const spTextarea = document.getElementById("sp-note-textarea");
+      if (!spTextarea || !spTextarea.value.trim()) return;
+
+      const newNote = {
+        id: "note-" + Math.random().toString(36).substr(2, 9),
+        date: formatDate(appState.currentDate),
+        content: spTextarea.value.trim(),
+        createdAt: new Date().toISOString(),
+        taskIds: [],
+        scheduleIds: [],
+        dashboardArchived: false
+      };
+      pushUndoSnapshot();
+      appState.notes.push(newNote);
+      saveData();
+      spTextarea.value = "";
+      renderNotes();
+      renderDashboardStickyNotes();
+      if (window.lucide) lucide.createIcons();
+    });
   }
 
   const btnRelateTask = document.getElementById("btn-relate-task");
@@ -4231,7 +4270,12 @@ function renderNotes() {
   const query = (document.getElementById("notes-search-input")?.value || "").toLowerCase().trim();
 
   // 検索クエリで絞り込み
+  // SP時: アーカイブされていないメモのみ表示
+  const isSP = window.innerWidth <= 768;
+
   const filteredNotes = appState.notes.filter(note => {
+    // SP時は非アーカイブのみ
+    if (isSP && note.dashboardArchived) return false;
     if (!query) return true;
     
     // 日付・本文検索
@@ -4307,6 +4351,35 @@ function selectNote(noteId) {
 
   renderRelations();
   renderNotes(); // リスト側のアクティブ状態表示の更新
+
+  // SP時はエディタをオーバーレイで表示
+  if (window.innerWidth <= 768) openSPEditor();
+}
+
+// SP エディタオーバーレイ開閉
+function openSPEditor() {
+  const panel = document.querySelector(".notes-editor-panel");
+  if (!panel) return;
+
+  // 「戻る」ボタンが未設置なら追加
+  if (!panel.querySelector(".sp-editor-close-btn")) {
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "sp-editor-close-btn btn btn-sm";
+    closeBtn.style.cssText = "display:none;align-items:center;gap:6px;margin-bottom:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;flex-shrink:0;";
+    closeBtn.innerHTML = '<i data-lucide="arrow-left" style="width:14px;height:14px;"></i> 一覧に戻る';
+    closeBtn.addEventListener("click", closeSPEditor);
+    panel.insertBefore(closeBtn, panel.firstChild);
+    if (window.lucide) lucide.createIcons();
+  }
+
+  panel.classList.add("sp-editor-open");
+  const textarea = document.getElementById("note-textarea");
+  if (textarea) textarea.focus();
+}
+
+function closeSPEditor() {
+  const panel = document.querySelector(".notes-editor-panel");
+  if (panel) panel.classList.remove("sp-editor-open");
 }
 
 function createNewNote() {
