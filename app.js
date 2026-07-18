@@ -3164,6 +3164,79 @@ function setupEventListeners() {
     if (e.target.closest(".btn-close-modal")) closeAllModals();
     if (e.target.classList.contains("modal-overlay")) closeAllModals();
   });
+
+  // ===== SP ボトムナビゲーション =====
+  const spTabViewMap = { schedule: "dashboard", tasks: "tasks", notes: "notes" };
+  document.querySelectorAll(".sp-nav-item[data-sp-tab]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".sp-nav-item").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const viewName = spTabViewMap[btn.dataset.spTab] || "dashboard";
+      switchView(viewName);
+      if (sidebar) sidebar.classList.remove("active");
+    });
+  });
+
+  // ===== プルダウン再読み込み (Pull-to-Refresh) =====
+  const isSP = () => window.innerWidth <= 768;
+  let ptrTouchStartY = 0;
+  let ptrActive = false;
+  const PTR_THRESHOLD = 72;
+  const mainContent = document.querySelector(".main-content");
+  const ptrEl = document.getElementById("ptr-indicator");
+  const ptrText = document.getElementById("ptr-text");
+
+  if (mainContent && ptrEl) {
+    mainContent.addEventListener("touchstart", e => {
+      if (!isSP()) return;
+      ptrTouchStartY = e.touches[0].clientY;
+      ptrActive = false;
+    }, { passive: true });
+
+    mainContent.addEventListener("touchmove", e => {
+      if (!isSP()) return;
+      if (mainContent.scrollTop > 0) return;
+      const pullDist = e.touches[0].clientY - ptrTouchStartY;
+      if (pullDist <= 0) return;
+
+      ptrActive = true;
+      const progress = Math.min(pullDist / PTR_THRESHOLD, 1);
+      const translateY = Math.min(pullDist * 0.45, 52) - 60;
+      ptrEl.style.transition = "none";
+      ptrEl.style.top = `${translateY}px`;
+      ptrEl.style.opacity = Math.min(progress * 1.5, 1).toString();
+      ptrEl.querySelector(".ptr-icon").style.transform = `rotate(${progress * 180}deg)`;
+      if (ptrText) ptrText.textContent = pullDist >= PTR_THRESHOLD ? "離して更新" : "引っ張って更新";
+    }, { passive: true });
+
+    mainContent.addEventListener("touchend", e => {
+      if (!isSP() || !ptrActive) return;
+      const pullDist = e.changedTouches[0].clientY - ptrTouchStartY;
+
+      if (pullDist >= PTR_THRESHOLD) {
+        // 更新実行
+        ptrEl.classList.add("ptr-refreshing", "ptr-spinning");
+        ptrEl.style.top = "0px";
+        ptrEl.style.opacity = "1";
+        if (ptrText) ptrText.textContent = "更新中...";
+        renderAll();
+        if (typeof lucide !== "undefined") lucide.createIcons();
+        setTimeout(() => {
+          ptrEl.classList.remove("ptr-refreshing", "ptr-spinning");
+          ptrEl.style.transition = "top 0.3s ease, opacity 0.3s ease";
+          ptrEl.style.top = "-60px";
+          ptrEl.style.opacity = "0";
+          if (ptrText) ptrText.textContent = "引っ張って更新";
+        }, 900);
+      } else {
+        // キャンセル
+        ptrEl.style.transition = "top 0.25s ease, opacity 0.25s ease";
+        ptrEl.style.top = "-60px";
+        ptrEl.style.opacity = "0";
+      }
+      ptrActive = false;
+    }, { passive: true });
+  }
 }
 
 // ==========================================================================

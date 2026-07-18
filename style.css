@@ -1752,37 +1752,61 @@ label {
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* Responsive */
+/* ============================
+   SP Pull-to-Refresh Indicator
+   ============================ */
+.ptr-indicator {
+  display: none; /* PC では非表示 */
+}
+
+/* ============================
+   SP Bottom Navigation (hidden on PC)
+   ============================ */
+.sp-bottom-nav {
+  display: none;
+}
+
+/* ============================
+   Responsive (SP: max-width 768px)
+   ============================ */
 @media (max-width: 768px) {
+
+  /* ---- 全体 overflow-x 排除 ---- */
+  html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
   .app-container {
     flex-direction: column;
     position: relative;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
-  /* ハンバーガーボタン表示 */
+  /* ---- ハンバーガーボタン表示 ---- */
   .btn-hamburger {
     display: block !important;
   }
 
-  /* サイドバーをスライド式ドロワーに変更 */
+  /* ---- サイドバーをスライド式ドロワーに変更 ---- */
   .sidebar {
     position: fixed;
     top: 0;
     left: 0;
     width: 260px;
     height: 100vh;
-    z-index: 1000;
+    z-index: 1050;
     transform: translateX(-100%);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
-    background: rgba(8, 13, 22, 0.96);
+    background: rgba(8, 13, 22, 0.97);
     border-right: 1px solid var(--border-glass);
     display: flex;
     flex-direction: column;
     padding: 20px;
   }
 
-  /* サイドバー展開用クラス */
   .sidebar.active {
     transform: translateX(0);
   }
@@ -1801,90 +1825,130 @@ label {
     display: block;
   }
 
+  /* ---- メインコンテンツ ---- */
   .main-content {
+    width: 100%;
+    max-width: 100vw;
     height: 100vh;
     padding: 4px 6px;
+    padding-bottom: 72px; /* ボトムナビ分の余白 */
     overflow-y: auto;
-    overflow-x: hidden; /* 水平スクロールを完全に排除 */
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   .view-content {
-    padding: 4px 2px !important; /* PC版のpadding:40pxをスマホ幅用に極小化 */
+    padding: 4px 2px !important;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   .main-header {
-    padding: 0 8px !important; /* 左右の余白40pxを8pxに極小化 */
+    padding: 0 8px !important;
     padding-bottom: 6px !important;
     margin-bottom: 8px;
+    overflow: hidden;
   }
 
-  /* ダッシュボードを 1カラム化 ＆ 順序変更（予定 → タスク → 目標） */
+  /* ---- ダッシュボード 1カラム化 ---- */
   .dashboard-grid {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .grid-col-left {
-    order: 1; /* 1: 今日の予定 */
+    order: 1;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* 目標進捗サマリーは SP 非表示 */
+  .card-goals-summary {
+    display: none !important;
+  }
+
+  .grid-col-center {
+    order: 2;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .grid-col-right {
-    order: 2; /* 2: 右カラム全体 */
+    order: 3;
+    width: 100%;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
 
   .card-todo-today {
-    order: 1; /* タスクを予定の直下に */
+    order: 1;
   }
 
-  .card-goals-summary {
-    order: 2; /* 目標進捗をタスクの下に */
-  }
-
-  /* SP時のパディング・フォントのコンパクト調整 */
+  /* ---- カード共通 ---- */
   .card {
     margin-bottom: 0;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
+    max-width: 100%;
+    overflow: hidden;
   }
+
   .card-body, .timeline-container, .todo-quick-list {
     padding: 6px !important;
   }
+
   .timeline-item {
     padding: 6px 8px !important;
     font-size: 11px !important;
   }
+
   .todo-item {
     padding: 4px 6px !important;
     font-size: 10.5px !important;
   }
+
   .goal-progress-item {
     padding: 6px 8px !important;
   }
+
   .goal-progress-header span {
     font-size: 11px !important;
   }
 
   .view-section {
-    padding: 6px 4px !important;
+    padding: 6px 2px !important;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
+  /* ---- Goals ---- */
   .goals-grid {
     grid-template-columns: 1fr;
     gap: 8px !important;
+    max-width: 100%;
   }
 
+  /* ---- カンバン 1カラム ---- */
   .kanban-board {
     grid-template-columns: 1fr;
     gap: 10px !important;
     padding: 0 !important;
+    max-width: 100%;
   }
 
   .kanban-column {
     padding: 8px !important;
     border-radius: 6px !important;
+    max-width: 100%;
   }
 
   .kanban-card {
@@ -1892,30 +1956,179 @@ label {
     margin-bottom: 6px !important;
   }
 
-  /* スマホ版ではダッシュボードのタスククイックボタン群を非表示にしてタイトルをフル表示 */
+  /* タスクフィルターバー SP用 */
+  .tasks-filter-bar {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  .tasks-date-header {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  /* ---- タスクのクイックボタン群 非表示 ---- */
   .task-quick-btns {
     display: none !important;
   }
 
-  /* 週間バーチカルカレンダーのインナースクロール化（画面全体の横揺れを防ぐ） */
+  /* ---- メモビュー 1カラム ---- */
+  .notes-container {
+    flex-direction: column !important;
+    gap: 12px;
+    max-width: 100%;
+  }
+
+  .notes-sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-height: 45vh;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding-bottom: 12px;
+  }
+
+  .notes-editor-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* ---- カレンダー SP ---- */
   .calendar-week-view {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     padding: 4px !important;
   }
+
   .week-grid-header, .week-grid-body {
-    min-width: 640px; /* 横スクロールで崩れない最小幅を確保 */
+    min-width: 580px;
   }
 
+  /* ---- レビュー SP ---- */
   .review-grid {
     grid-template-columns: 1fr !important;
     gap: 8px !important;
   }
 
+  /* ---- タイムラインの時刻非表示 ---- */
   .timeline-sch-time {
     display: none !important;
   }
+
+  /* ---- SP ボトムナビゲーション ---- */
+  .sp-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 60px;
+    background: rgba(8, 13, 22, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1000;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  .sp-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.38);
+    cursor: pointer;
+    font-size: 10px;
+    font-family: inherit;
+    font-weight: 500;
+    padding: 6px 24px;
+    transition: color 0.2s ease, transform 0.15s ease;
+    flex: 1;
+    letter-spacing: 0.02em;
+  }
+
+  .sp-nav-item i {
+    width: 21px;
+    height: 21px;
+    stroke-width: 1.8;
+  }
+
+  .sp-nav-item.active {
+    color: var(--accent);
+  }
+
+  .sp-nav-item.active i {
+    filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.6));
+  }
+
+  .sp-nav-item:active {
+    transform: scale(0.92);
+  }
+
+  /* ---- プルダウン再読み込みインジケーター ---- */
+  .ptr-indicator {
+    display: flex;
+    position: fixed;
+    top: -60px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 52px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(8, 13, 22, 0.92);
+    backdrop-filter: blur(12px);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 2000;
+    opacity: 0;
+    transition: none;
+    pointer-events: none;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+  }
+
+  .ptr-indicator.ptr-refreshing {
+    top: 0 !important;
+    opacity: 1 !important;
+    transition: top 0.3s ease, opacity 0.3s ease;
+  }
+
+  .ptr-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .ptr-indicator.ptr-spinning .ptr-icon {
+    animation: ptr-spin 0.6s linear infinite;
+  }
+
+  @keyframes ptr-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ---- 横スクロール対策: 全ブロック要素の幅制限 ---- */
+  .card, .card-header, .card-body,
+  .todo-quick-list, .timeline-container,
+  .kanban-board, .kanban-column,
+  .notes-container, .notes-sidebar, .notes-editor-panel,
+  .view-section, .goals-grid {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 }
+
 
 /* Timeline Drag & Drop Allocation */
 .timeline-item.free-time {

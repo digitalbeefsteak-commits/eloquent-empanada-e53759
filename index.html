@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>LifeOrbit - 統合目標・タスク・スケジュール管理</title>
   <meta name="description" content="目標(Goals)・タスク(Tasks)・スケジュール(外部iCS連携)をシームレスに一括管理し、空き時間を可視化する統合タスク管理SPA。">
   
@@ -24,13 +24,19 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="style.css?v=1.0.2">
+  <link rel="stylesheet" href="style.css?v=1.1.0">
 </head>
 <body>
   <!-- 背景のエフェクト用装飾要素 -->
   <div class="bg-glow bg-glow-1"></div>
   <div class="bg-glow bg-glow-2"></div>
   <div class="bg-glow bg-glow-3"></div>
+
+  <!-- プルダウン再読み込みインジケーター (SP用) -->
+  <div id="ptr-indicator" class="ptr-indicator">
+    <i data-lucide="refresh-cw" class="ptr-icon"></i>
+    <span id="ptr-text">引っ張って更新</span>
+  </div>
 
   <div class="app-container">
     <!-- サイドバーナビゲーション -->
@@ -86,7 +92,7 @@
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.3.11</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.4.0</div>
       </div>
     </aside>
 
@@ -637,6 +643,22 @@
 
       </div>
     </main>
+
+    <!-- SP ボトムナビゲーション -->
+    <nav id="sp-bottom-nav" class="sp-bottom-nav">
+      <button class="sp-nav-item active" id="sp-nav-schedule" data-sp-tab="schedule">
+        <i data-lucide="clock"></i>
+        <span>予定</span>
+      </button>
+      <button class="sp-nav-item" id="sp-nav-tasks" data-sp-tab="tasks">
+        <i data-lucide="check-square"></i>
+        <span>タスク</span>
+      </button>
+      <button class="sp-nav-item" id="sp-nav-notes" data-sp-tab="notes">
+        <i data-lucide="notebook-pen"></i>
+        <span>メモ</span>
+      </button>
+    </nav>
   </div>
 
   <!-- ==================== MODALS ==================== -->
@@ -928,6 +950,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- JavaScript -->
-  <script src="app.js?v=1.3.11"></script>
+  <script src="app.js?v=1.4.0"></script>
 </body>
 </html>
