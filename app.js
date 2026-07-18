@@ -1277,6 +1277,15 @@ function renderTimeline() {
   const el = document.getElementById("timeline-today");
   if (!el) return;
   el.innerHTML = "";
+
+  const dateDisplay = document.getElementById("dashboard-date-display");
+  const datePicker = document.getElementById("dashboard-date-picker");
+  if (dateDisplay) {
+    dateDisplay.textContent = formatDateDisplay(appState.currentDate);
+  }
+  if (datePicker) {
+    datePicker.value = formatDate(appState.currentDate);
+  }
   
   const todayStr = formatDate(appState.currentDate);
   const scheds = appState.schedules.filter(s => s.startDate === todayStr);
@@ -1597,19 +1606,10 @@ function renderTimeline() {
       noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:11px; position:absolute; right:6px; top:4px; z-index:15; display:inline-flex; align-items:center; padding:2px; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); event.preventDefault(); viewLinkedNote('${targetNoteId}')">📝</span>`;
     }
 
-    const rightOffset = schedNotes.length > 0 ? "24px" : "6px";
-    const datePickerHTML = `
-      <div style="position:absolute; right:${rightOffset}; top:4px; z-index:15; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; pointer-events:auto;" onclick="event.stopPropagation();">
-        <span style="font-size:10px; color:rgba(255,255,255,0.6); cursor:pointer;" title="日付変更">📅</span>
-        <input type="date" value="${s.startDate}" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer;" onchange="changeScheduleDate('${s.id}', this.value)">
-      </div>
-    `;
-
     eventEl.innerHTML = `
       ${noteIconHTML}
-      ${datePickerHTML}
-      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:36px;">${s.title}</div>
-      <div style="font-size:9.5px;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:36px;">${s.startTime}–${s.endTime}</div>
+      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;">${s.title}</div>
+      <div style="font-size:9.5px;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;">${s.startTime}–${s.endTime}</div>
     `;
 
     // ドラッグ＆ドロップによるメモ紐付け
@@ -2220,15 +2220,11 @@ function renderWeekView() {
       `;
       eventEl.onclick = () => openEditScheduleModal(s.id);
       eventEl.innerHTML = `
-        <div style="position:absolute; right:4px; top:2px; z-index:15; width:12px; height:12px; display:inline-flex; align-items:center; justify-content:center; pointer-events:auto;" onclick="event.stopPropagation();">
-          <span style="font-size:8px; color:rgba(255,255,255,0.4); cursor:pointer;" title="日付変更">📅</span>
-          <input type="date" value="${s.startDate}" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer;" onchange="changeScheduleDate('${s.id}', this.value)">
-        </div>
-        <div style="font-weight:700;display:flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:16px;">
+        <div style="font-weight:700;display:flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
           <span style="width:4px;height:4px;border-radius:50%;background:${indicator};flex-shrink:0;"></span>
           ${s.title}
         </div>
-        <div style="color:rgba(255,255,255,0.4);font-size:8.5px;padding-right:16px;">${s.startTime}-${s.endTime}</div>
+        <div style="color:rgba(255,255,255,0.4);font-size:8.5px;">${s.startTime}-${s.endTime}</div>
       `;
       col.appendChild(eventEl);
     });
@@ -2902,6 +2898,47 @@ function setupUI() {
 }
 
 function setupEventListeners() {
+  // ダッシュボード日付切り替え
+  const prevBtn = document.getElementById("btn-dashboard-prev-day");
+  const nextBtn = document.getElementById("btn-dashboard-next-day");
+  const todayBtn = document.getElementById("btn-dashboard-today");
+  const datePicker = document.getElementById("dashboard-date-picker");
+
+  if (prevBtn) {
+    prevBtn.addEventListener("click", () => {
+      const cur = new Date(appState.currentDate);
+      cur.setDate(cur.getDate() - 1);
+      appState.currentDate = cur;
+      saveData();
+      renderAll();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => {
+      const cur = new Date(appState.currentDate);
+      cur.setDate(cur.getDate() + 1);
+      appState.currentDate = cur;
+      saveData();
+      renderAll();
+    });
+  }
+  if (todayBtn) {
+    todayBtn.addEventListener("click", () => {
+      appState.currentDate = new Date();
+      saveData();
+      renderAll();
+    });
+  }
+  if (datePicker) {
+    datePicker.addEventListener("change", (e) => {
+      if (e.target.value) {
+        appState.currentDate = new Date(e.target.value);
+        saveData();
+        renderAll();
+      }
+    });
+  }
+
   // ハンバーガーメニュー
   const btnHamburger = document.getElementById("btn-hamburger");
   const sidebar = document.querySelector(".sidebar");
