@@ -654,14 +654,27 @@ let activeNoteId = null;
 let expandedMilestones = new Set();
 let lastTasksState = null;
 
-function undoLastDelete() {
-  if (lastTasksState) {
-    appState.tasks = JSON.parse(JSON.stringify(lastTasksState));
-    lastTasksState = null;
-    saveData();
-    renderAll();
-    alert("直前のタスク削除を取り消しました。(Ctrl+Z)");
+let undoStack = [];
+const MAX_UNDO_LIMIT = 50;
+
+function saveToUndoStack() {
+  if (undoStack.length >= MAX_UNDO_LIMIT) {
+    undoStack.shift();
   }
+  undoStack.push(JSON.parse(JSON.stringify(appState)));
+}
+
+function performUndo() {
+  if (undoStack.length === 0) return;
+  const prevState = undoStack.pop();
+  appState = prevState;
+  
+  // Dateオブジェクトの再構成
+  if (appState.currentDate) appState.currentDate = new Date(appState.currentDate);
+  if (appState.viewDate) appState.viewDate = new Date(appState.viewDate);
+  
+  saveData();
+  renderAll();
 }
 
 // ==========================================================================
@@ -2525,6 +2538,9 @@ function handleTaskFormSubmit(e) {
   const desc = document.getElementById("task-desc").value;
   const parentSel = document.getElementById("task-parent");
   const parentTaskId = (parentSel && parentSel.value !== "none") ? parentSel.value : null;
+
+  saveToUndoStack();
+
   if (id) {
     const task = appState.tasks.find(t => t.id === id);
     if (task) {
@@ -2552,7 +2568,8 @@ function handleTaskFormSubmit(e) {
 
 function deleteTask() {
   const id = document.getElementById("task-id").value;
-  if (!id || !confirm("このタスクを削除しますか？")) return;
+  if (!id) return;
+  saveToUndoStack();
   appState.tasks = appState.tasks.filter(t => t.id !== id && t.parentTaskId !== id);
   saveData();
   closeModal("modal-task-form");
@@ -2684,6 +2701,9 @@ function handleScheduleFormSubmit(e) {
   const endTime = document.getElementById("schedule-end-time").value;
   const allday = document.getElementById("schedule-allday").checked;
   const desc = document.getElementById("schedule-desc").value;
+
+  saveToUndoStack();
+
   if (id) {
     const s = appState.schedules.find(s => s.id === id);
     if (s) { s.title=title; s.startDate=startDate; s.startTime=startTime; s.endDate=endDate; s.endTime=endTime; s.allday=allday; s.desc=desc; }
@@ -2697,7 +2717,8 @@ function handleScheduleFormSubmit(e) {
 
 function deleteSchedule() {
   const id = document.getElementById("schedule-id").value;
-  if (!id || !confirm("この予定を削除しますか？")) return;
+  if (!id) return;
+  saveToUndoStack();
   appState.schedules = appState.schedules.filter(s => s.id !== id);
   saveData();
   closeModal("modal-schedule-form");
@@ -2932,7 +2953,7 @@ function setupEventListeners() {
         return;
       }
       e.preventDefault();
-      undoLastDelete();
+      performUndo();
     }
   });
 
@@ -3215,6 +3236,8 @@ function handleGoalFormSubmit(e) {
   
   if (!title || !shortName) return;
 
+  saveToUndoStack();
+
   let goalId = id;
   if (id) {
     // 既存目標の更新
@@ -3277,7 +3300,9 @@ function handleGoalFormSubmit(e) {
 
 function deleteGoal() {
   const id = document.getElementById("goal-id").value;
-  if (!id || !confirm("この目標を削除しますか？紐づくすべてのタスクやマイルストーンも削除されます。")) return;
+  if (!id) return;
+
+  saveToUndoStack();
 
   appState.goals = appState.goals.filter(g => g.id !== id);
   // 目標に属するタスク・マイルストーンも削除
@@ -3508,6 +3533,8 @@ function postponeReviewTask(taskId) {
   const task = appState.tasks.find(t => t.id === taskId);
   if (!task) return;
 
+  saveToUndoStack();
+
   const cur = parseLocalDate(appState.currentDate);
   if (appState.reviewMode === "daily") {
     const tomorrow = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1);
@@ -3527,7 +3554,7 @@ function postponeReviewTask(taskId) {
 
 // 個別削除 (confirm無し・Ctrl+Z退避)
 function deleteReviewTask(taskId) {
-  lastTasksState = JSON.parse(JSON.stringify(appState.tasks));
+  saveToUndoStack();
   appState.tasks = appState.tasks.filter(t => t.id !== taskId);
   saveData();
   renderAll();
@@ -3558,23 +3585,20 @@ function bulkMoveReviewTasks() {
   const cur = parseLocalDate(appState.currentDate);
   let newDuedateStr = "";
   let newStatus = "";
-  let confirmMsg = "";
 
   if (appState.reviewMode === "daily") {
     const tomorrow = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1);
     newDuedateStr = formatDate(tomorrow);
     newStatus = "this_week";
-    confirmMsg = `${targetTasks.length}件のタスクをすべて翌日に先送りしますか？`;
   } else {
     const day = cur.getDay();
     const diffToMonday = cur.getDate() - day + (day === 0 ? -6 : 1);
     const nextMonday = new Date(cur.getFullYear(), cur.getMonth(), diffToMonday + 7);
     newDuedateStr = formatDate(nextMonday);
     newStatus = "next_week_and_later";
-    confirmMsg = `${targetTasks.length}件のタスクをすべて翌週月曜日に先送りしますか？`;
   }
 
-  if (!confirm(confirmMsg)) return;
+  saveToUndoStack();
 
   targetTasks.forEach(t => {
     t.status = newStatus;
@@ -3607,7 +3631,7 @@ function bulkDeleteReviewTasks() {
 
   if (targetTasks.length === 0) return;
 
-  lastTasksState = JSON.parse(JSON.stringify(appState.tasks));
+  saveToUndoStack();
   const targetIds = new Set(targetTasks.map(t => t.id));
   appState.tasks = appState.tasks.filter(t => !targetIds.has(t.id));
 
@@ -3957,7 +3981,7 @@ window.addChildTask = addChildTask;
 window.resetToDefault = resetToDefault;
 window.dragStartTask = dragStartTask;
 window.quickDeleteTask = quickDeleteTask;
-window.undoLastDelete = undoLastDelete;
+window.performUndo = performUndo;
 window.toggleDashboardGoal = toggleDashboardGoal;
 window.openAddGoalModal = openAddGoalModal;
 window.openEditGoalModal = openEditGoalModal;
@@ -4162,6 +4186,8 @@ function saveActiveNote() {
   const date = dateInput.value;
   const content = textarea.value;
 
+  saveToUndoStack();
+
   let note = appState.notes.find(n => n.id === id);
   if (note) {
     note.date = date;
@@ -4169,10 +4195,8 @@ function saveActiveNote() {
     note.taskIds = [...pendingRelations.taskIds];
     note.scheduleIds = [...pendingRelations.scheduleIds];
     note.updatedAt = new Date().toISOString();
-    // 旧フォーマットのメモに dashboardArchived が未設定の場合は初期化
     if (note.dashboardArchived === undefined) note.dashboardArchived = false;
   } else {
-    // 新規作成
     note = {
       id: id.startsWith("new-") ? "note-" + id.substring(4) : id,
       date,
@@ -4191,13 +4215,9 @@ function saveActiveNote() {
   saveData();
   renderNotes();
 
-  // カレンダー・レビュー・ダッシュボード付箋を再生成
   renderCalendar();
   renderReviewPage();
-  // 保存した日付が今日なら付箋リストも更新
   if (typeof renderDashboardStickyNotes === "function") renderDashboardStickyNotes();
-
-  alert("メモを保存しました。");
 }
 
 function deleteActiveNote() {
@@ -4207,7 +4227,7 @@ function deleteActiveNote() {
     return;
   }
 
-  if (!confirm("このメモを削除しますか？")) return;
+  saveToUndoStack();
 
   appState.notes = appState.notes.filter(n => n.id !== id);
   saveData();
@@ -4217,7 +4237,6 @@ function deleteActiveNote() {
   
   renderCalendar();
   renderReviewPage();
-  alert("メモを削除しました。");
 }
 
 function renderRelations() {
@@ -4520,6 +4539,7 @@ function renderDashboardStickyNotes() {
       // アーカイブボタン
       card.querySelector(".archive").addEventListener("click", e => {
         e.stopPropagation();
+        saveToUndoStack();
         const n = appState.notes.find(x => x.id === note.id);
         if (n) { n.dashboardArchived = true; saveData(); renderDashboardStickyNotes(); }
       });
@@ -4527,7 +4547,7 @@ function renderDashboardStickyNotes() {
       // 削除ボタン
       card.querySelector(".delete").addEventListener("click", e => {
         e.stopPropagation();
-        if (!confirm("このメモを削除しますか？")) return;
+        saveToUndoStack();
         appState.notes = appState.notes.filter(x => x.id !== note.id);
         saveData(); renderDashboardStickyNotes(); renderCalendar();
       });
@@ -4589,6 +4609,7 @@ function renderDashboardStickyNotes() {
         e.stopPropagation();
         const newContent = ta.value.trim();
         if (!newContent) return;
+        saveToUndoStack();
         const n = appState.notes.find(x => x.id === note.id);
         if (n) {
           n.content = newContent;
@@ -4648,6 +4669,8 @@ function initDashboardNote() {
         const content = textarea.value.trim();
         if (!content) return;
 
+        saveToUndoStack();
+
         const tStr = formatDate(appState.currentDate);
         const newNote = {
           id: "note-" + Math.random().toString(36).substr(2, 9),
@@ -4681,13 +4704,12 @@ function initDashboardNote() {
         const todayNotes = appState.notes.filter(n => n.date === todayStr && !n.dashboardArchived);
         if (todayNotes.length === 0) return;
         
-        if (confirm("今日作成されたすべてのメモを非表示（アーカイブ）にしますか？")) {
-          todayNotes.forEach(n => {
-            n.dashboardArchived = true;
-          });
-          saveData();
-          renderDashboardStickyNotes();
-        }
+        saveToUndoStack();
+        todayNotes.forEach(n => {
+          n.dashboardArchived = true;
+        });
+        saveData();
+        renderDashboardStickyNotes();
       });
     }
 
@@ -4718,6 +4740,7 @@ function linkNoteToItem(noteId, type, itemId) {
   }
 
   if (updated) {
+    saveToUndoStack();
     saveData();
     renderAll();
   }
@@ -4749,6 +4772,7 @@ function removeNoteRelation(noteId, type, itemId) {
   }
 
   if (updated) {
+    saveToUndoStack();
     saveData();
     renderAll();
   }
