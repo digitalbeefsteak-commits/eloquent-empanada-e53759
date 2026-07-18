@@ -92,7 +92,7 @@
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.5.8</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.5.9</div>
       </div>
     </aside>
 
@@ -127,6 +127,9 @@
                   <div class="header-left" style="gap: 8px;">
                     <i data-lucide="clock" class="text-purple"></i>
                     <h2>予定</h2>
+                    <button class="btn btn-icon btn-sm" id="btn-dashboard-add-schedule" title="予定を追加" style="pointer-events:auto;cursor:pointer;">
+                      <i data-lucide="plus"></i>
+                    </button>
                   </div>
                   <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:2px 8px; pointer-events:auto;">
                     <button id="btn-dashboard-prev-day" style="background:none; border:none; color:#fff; cursor:pointer; font-size:11px; padding:2px 4px;">◀</button>
@@ -980,6 +983,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- JavaScript -->
-  <script src="app.js?v=1.5.8"></script>
+  <script src="app.js?v=1.5.9"></script>
 </body>
 </html>

@@ -1588,8 +1588,8 @@ function renderTimeline() {
       const leftPercent = s._colIndex * colWidthPercent;
 
       const eventEl = document.createElement("div");
-      const bg = s.isExternal ? "rgba(168,85,247,0.75)" : "rgba(59,130,246,0.75)";
-      const border = s.isExternal ? "1px solid rgba(168,85,247,0.9)" : "1px solid rgba(59,130,246,0.9)";
+      const bg = s.isExternal ? "rgba(16, 185, 129, 0.72)" : "rgba(59, 130, 246, 0.75)";
+      const border = s.isExternal ? "1px solid rgba(16, 185, 129, 0.85)" : "1px solid rgba(59, 130, 246, 0.9)";
 
       eventEl.style.cssText = `
         position:absolute;
@@ -2051,7 +2051,7 @@ function renderCalendar() {
       const schsToday = appState.schedules.filter(s => s.startDate === dateStr);
       schsToday.forEach(s => {
         const el = document.createElement("div");
-        el.style.cssText = `font-size:10px;padding:1px 4px;border-radius:2px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;background:${s.isExternal?"rgba(168,85,247,0.3)":"rgba(59,130,246,0.3)"};color:#fff;`;
+        el.style.cssText = `font-size:10px;padding:1px 4px;border-radius:2px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;background:${s.isExternal?"rgba(16, 185, 129, 0.35)":"rgba(59, 130, 246, 0.3)"};color:#fff;`;
         el.textContent = s.title;
         el.onclick = () => openEditScheduleModal(s.id);
         cell.appendChild(el);
@@ -2227,9 +2227,9 @@ function renderWeekView() {
       const leftPercent = s._colIndex * colWidthPercent;
 
       const eventEl = document.createElement("div");
-      const bg = s.isExternal ? "rgba(168,85,247,0.22)" : "rgba(59,130,246,0.22)";
-      const border = s.isExternal ? "1px solid rgba(168,85,247,0.5)" : "1px solid rgba(59,130,246,0.5)";
-      const indicator = s.isExternal ? "#a855f7" : "#3b82f6";
+      const bg = s.isExternal ? "rgba(16, 185, 129, 0.22)" : "rgba(59, 130, 246, 0.22)";
+      const border = s.isExternal ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(59, 130, 246, 0.5)";
+      const indicator = s.isExternal ? "#10b981" : "#3b82f6";
       
       eventEl.style.cssText = `
         position:absolute;
@@ -3094,6 +3094,9 @@ function setupEventListeners() {
   // 予定追加
   const btnAddSch = document.getElementById("btn-add-schedule");
   if (btnAddSch) btnAddSch.addEventListener("click", () => openAddScheduleModal(""));
+
+  const btnDashAddSch = document.getElementById("btn-dashboard-add-schedule");
+  if (btnDashAddSch) btnDashAddSch.addEventListener("click", () => openAddScheduleModal(""));
 
   // カレンダーナビ
   const btnPrev = document.getElementById("btn-cal-prev");
