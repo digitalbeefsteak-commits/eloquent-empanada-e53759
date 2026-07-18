@@ -1873,11 +1873,33 @@ label {
   }
 
   .grid-col-center {
-    display: none !important;
+    order: 2;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .grid-col-right {
+    order: 3;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ---- カレンダービュー SP最適化 (予定タイムライン化) ---- */
+  #view-calendar .ics-drop-zone,
+  #view-calendar .calendar-controls,
+  #view-calendar .calendar-month-view,
+  #view-calendar .calendar-week-view {
     display: none !important;
+  }
+
+  #view-calendar .sp-calendar-daily-view {
+    display: block !important;
   }
 
   .card-todo-today {

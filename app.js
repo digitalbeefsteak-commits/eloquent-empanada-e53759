@@ -1265,407 +1265,414 @@ function renderTodayTasks() {
 
 // ダッシュボード: タイムライン
 function renderTimeline() {
-  const el = document.getElementById("timeline-today");
-  if (!el) return;
-  el.innerHTML = "";
+  const containerIds = ["timeline-today", "calendar-timeline-today"];
 
-  const dateDisplay = document.getElementById("dashboard-date-display");
-  const datePicker = document.getElementById("dashboard-date-picker");
-  if (dateDisplay) {
-    dateDisplay.textContent = formatDateDisplay(appState.currentDate);
-  }
-  if (datePicker) {
-    datePicker.value = formatDate(appState.currentDate);
-  }
-  
+  // 日付表示の同期
+  const dateDisplays = ["dashboard-date-display", "calendar-date-display"];
+  dateDisplays.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = formatDateDisplay(appState.currentDate);
+  });
+  const datePickers = ["dashboard-date-picker", "calendar-date-picker"];
+  datePickers.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = formatDate(appState.currentDate);
+  });
+
   const todayStr = formatDate(appState.currentDate);
   const scheds = appState.schedules.filter(s => s.startDate === todayStr);
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  let freeMinutes = 0;
 
-  // 1. スロット行の描画 (9:00 から 20:30 までの30分刻み、計24スロット)
-  const slotHeight = 34; // 各スロットの高さ (px) - 約70%に縮小 (48 * 0.7 = 33.6 -> 34px)
-  const minRatio = slotHeight / 30; // 1分あたりの高さ比率
-  
-  // スクリューバグ対策・絶対配置の親とするためのインナーコンテナを作成
-  const inner = document.createElement("div");
-  inner.id = "timeline-scroll-inner";
-  inner.style.cssText = "position:relative;width:100%;box-sizing:border-box;";
-  el.appendChild(inner);
-  
-  // スロット定義
-  const slots = [];
-  for (let h = 9; h <= 20; h++) {
-    slots.push({ h, m: 0 });
-    slots.push({ h, m: 30 });
-  }
+  // 各コンテナに個別に描画
+  containerIds.forEach(containerId => {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = "";
 
-  // ドロップ対応用のスロット行を作成して配置
-  slots.forEach((sObj, idx) => {
-    const slot = `${String(sObj.h).padStart(2, "0")}:${String(sObj.m).padStart(2, "0")}`;
-    const slotMin = sObj.h * 60 + sObj.m;
-    const slotEndMin = slotMin + 30;
-    const isCurrentSlot = nowMin >= slotMin && nowMin < slotEndMin;
-    const isPastSlot = slotEndMin <= nowMin;
+    let freeMinutes = 0;
 
-    // このスロットと交差するスケジュールがあるか判定
-    const slotScheds = scheds.filter(s => {
+    // 1. スロット行の描画 (9:00 から 20:30 までの30分刻み、計24スロット)
+    const slotHeight = 34; // 各スロットの高さ (px) - 約70%に縮小 (48 * 0.7 = 33.6 -> 34px)
+    const minRatio = slotHeight / 30; // 1分あたりの高さ比率
+    
+    // スクリューバグ対策・絶対配置の親とするためのインナーコンテナを作成
+    const inner = document.createElement("div");
+    inner.id = containerId + "-scroll-inner";
+    inner.style.cssText = "position:relative;width:100%;box-sizing:border-box;";
+    el.appendChild(inner);
+    
+    // スロット定義
+    const slots = [];
+    for (let h = 9; h <= 20; h++) {
+      slots.push({ h, m: 0 });
+      slots.push({ h, m: 30 });
+    }
+
+    // ドロップ対応用のスロット行を作成して配置
+    slots.forEach((sObj, idx) => {
+      const slot = `${String(sObj.h).padStart(2, "0")}:${String(sObj.m).padStart(2, "0")}`;
+      const slotMin = sObj.h * 60 + sObj.m;
+      const slotEndMin = slotMin + 30;
+      const isCurrentSlot = nowMin >= slotMin && nowMin < slotEndMin;
+      const isPastSlot = slotEndMin <= nowMin;
+
+      // このスロットと交差するスケジュールがあるか判定
+      const slotScheds = scheds.filter(s => {
+        if (s.allday) return false;
+        const start = parseTime(s.startTime);
+        const end = parseTime(s.endTime);
+        return slotMin < end && slotEndMin > start;
+      });
+      const hasSchedule = slotScheds.length > 0;
+
+      const assignedTasks = appState.tasks.filter(t => t.assignedTimeSlot === slot && t.status === "today");
+      const hasOverdueTasks = isPastSlot && assignedTasks.length > 0;
+
+      const row = document.createElement("div");
+      row.dataset.slot = slot;
+
+      // 行背景・ボーダー (正時と30分でボーダーの強弱をつける)
+      const rowBg = isCurrentSlot ? "rgba(99,210,255,0.06)" : hasOverdueTasks ? "rgba(239,68,68,0.05)" : "transparent";
+      const rowBorderTop = isCurrentSlot ? "border-top:2px solid rgba(99,210,255,0.6);" : "";
+      const isHourBoundary = sObj.m === 30; // この行の下は次の正時
+      const rowBorderBottom = isHourBoundary 
+        ? "border-bottom: 1px solid rgba(255,255,255,0.08);" 
+        : "border-bottom: 1px dashed rgba(255,255,255,0.03);";
+
+      row.style.cssText = `
+        display:flex;
+        gap:0;
+        min-height:${slotHeight}px;
+        box-sizing:border-box;
+        ${rowBorderBottom}
+        ${rowBorderTop}
+        background:${rowBg};
+        transition:background 0.15s;
+        position:relative;
+      `;
+
+      // 時刻ラベルの強弱 (正時は大きく太く、30分は小さく薄く)
+      let timeLabelColor, timeLabelSize, timeLabelWeight;
+      if (sObj.m === 0) {
+        // 正時
+        timeLabelColor = isCurrentSlot ? "#63d2ff" : isPastSlot ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.55)";
+        timeLabelSize = "11px";
+        timeLabelWeight = "600";
+      } else {
+        // 30分
+        timeLabelColor = isCurrentSlot ? "#63d2ff" : isPastSlot ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.25)";
+        timeLabelSize = "9px";
+        timeLabelWeight = "400";
+      }
+
+      const nowBadge = isCurrentSlot ? `<div style="font-size:7px;color:#63d2ff;font-weight:800;letter-spacing:0.05em;margin-top:-2px;line-height:1;">NOW</div>` : "";
+      const timeLabel = document.createElement("div");
+      timeLabel.style.cssText = `
+        font-size:${timeLabelSize};
+        font-weight:${timeLabelWeight};
+        color:${timeLabelColor};
+        width:42px;
+        flex-shrink:0;
+        padding:4px 4px 0 4px;
+        text-align:center;
+        line-height:1.1;
+        box-sizing:border-box;
+        border-right:1px solid rgba(255,255,255,0.03);
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+      `;
+      timeLabel.innerHTML = `<div>${slot}</div>${nowBadge}`;
+
+      // コンテンツ領域
+      const contentDiv = document.createElement("div");
+      const paddingStyle = assignedTasks.length > 1 ? "padding: 4px 0;" : "padding: 0;";
+      contentDiv.style.cssText = `flex-grow:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;${paddingStyle}box-sizing:border-box;position:relative;z-index:2;`;
+
+      if (hasSchedule) {
+        // スケジュール被り
+      } else {
+        freeMinutes += 30;
+        if (assignedTasks.length) {
+          assignedTasks.forEach(t => {
+            const g = appState.goals.find(g => g.id === t.goalId);
+            const gs = g ? (g.shortName || "?") : null;
+            const taskRow = document.createElement("div");
+            taskRow.draggable = true;
+
+            const overdueBorder = hasOverdueTasks ? "border-left:3px solid rgba(239,68,68,0.8);" : "border-left:3px solid transparent;";
+            const taskBg = hasOverdueTasks ? "background:rgba(239,68,68,0.1);" : "";
+            taskRow.style.cssText = `
+              display:flex;
+              align-items:center;
+              gap:6px;
+              padding:2px 8px;
+              height:20px;
+              box-sizing:border-box;
+              ${overdueBorder}
+              ${taskBg}
+            `;
+
+            const titleColor = hasOverdueTasks ? "#fca5a5" : "rgba(255,255,255,0.88)";
+            const overdueTag = hasOverdueTasks
+              ? `<span style="font-size:8px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.2);padding:0px 3px;border-radius:2px;flex-shrink:0;">遅延</span>`
+              : "";
+
+            const taskNotes = appState.notes.filter(n => n.taskIds && n.taskIds.includes(t.id));
+            let noteIconHTML = "";
+            if (taskNotes.length > 0) {
+              const targetNoteId = taskNotes[0].id;
+              noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:10px; margin-left:4px; padding:2px; display:inline-flex; align-items:center; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); event.preventDefault(); viewLinkedNote('${targetNoteId}')">📝</span>`;
+            }
+
+            taskRow.innerHTML = `
+              ${overdueTag}
+              ${goalBadgeHTML(g, gs, "small")}
+              <span onclick="openEditTaskModal('${t.id}')" style="flex-grow:1;font-size:11px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${titleColor};">${t.title}</span>
+              ${noteIconHTML}
+              ${taskQuickBtns(t.id)}
+            `;
+            taskRow.addEventListener("dragstart", e => {
+              e.dataTransfer.setData("text/plain", t.id);
+              e.dataTransfer.setData("application/x-lifeorbit-task", t.id);
+              e.dataTransfer.effectAllowed = "move";
+              taskRow.style.opacity = "0.4";
+            });
+            taskRow.addEventListener("dragend", () => { taskRow.style.opacity = ""; });
+
+            // ドラッグ＆ドロップによるメモ紐付けおよびタスクのセル間移動のバブリング処理
+            taskRow.addEventListener("dragover", e => {
+              if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "link";
+                taskRow.classList.add("drag-over-note");
+              } else if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+              }
+            });
+            taskRow.addEventListener("dragleave", () => {
+              taskRow.classList.remove("drag-over-note");
+            });
+            taskRow.addEventListener("drop", e => {
+              e.preventDefault();
+              e.stopPropagation();
+              taskRow.classList.remove("drag-over-note");
+              const dragData = e.dataTransfer.getData("text/plain");
+              if (dragData.startsWith("note-id:")) {
+                const noteId = dragData.replace("note-id:", "");
+                linkNoteToItem(noteId, "task", t.id);
+              } else if (dragData && !dragData.startsWith("note-id:") && dragData !== "note-today") {
+                dropOnTimeline(e, slot);
+              }
+            });
+
+            contentDiv.appendChild(taskRow);
+          });
+        } else {
+          if (!isPastSlot) {
+            contentDiv.innerHTML = `<div style="padding:2px 8px;font-size:9.5px;color:rgba(255,255,255,0.12);font-style:italic;user-select:none;">ここにタスクをドロップ</div>`;
+          }
+        }
+      }
+
+      // ドラッグ＆ドロップイベント設定
+      row.addEventListener("dragover", e => {
+        if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
+          e.preventDefault();
+          if (hasSchedule) {
+            e.dataTransfer.dropEffect = "none";
+          } else {
+            e.dataTransfer.dropEffect = "move";
+            row.style.background = "rgba(100,200,255,0.1)";
+          }
+        }
+      });
+      row.addEventListener("dragleave", () => { row.style.background = rowBg; });
+      row.addEventListener("drop", e => {
+        row.style.background = rowBg;
+        if (hasSchedule) return;
+        const dragData = e.dataTransfer.getData("text/plain");
+        if (!dragData || dragData.startsWith("note-id:") || dragData === "note-today") return;
+        dropOnTimeline(e, slot);
+      });
+
+      row.appendChild(timeLabel);
+      row.appendChild(contentDiv);
+      inner.appendChild(row);
+    });
+
+    // 2. スケジュールを絶対配置で重ねる
+    const dayScheds = scheds.filter(s => {
       if (s.allday) return false;
       const start = parseTime(s.startTime);
       const end = parseTime(s.endTime);
-      return slotMin < end && slotEndMin > start;
-    });
-    const hasSchedule = slotScheds.length > 0;
-
-    const assignedTasks = appState.tasks.filter(t => t.assignedTimeSlot === slot && t.status === "today");
-    const hasOverdueTasks = isPastSlot && assignedTasks.length > 0;
-
-    const row = document.createElement("div");
-    row.dataset.slot = slot;
-
-    // 行背景・ボーダー (正時と30分でボーダーの強弱をつける)
-    const rowBg = isCurrentSlot ? "rgba(99,210,255,0.06)" : hasOverdueTasks ? "rgba(239,68,68,0.05)" : "transparent";
-    const rowBorderTop = isCurrentSlot ? "border-top:2px solid rgba(99,210,255,0.6);" : "";
-    const isHourBoundary = sObj.m === 30; // この行の下は次の正時
-    const rowBorderBottom = isHourBoundary 
-      ? "border-bottom: 1px solid rgba(255,255,255,0.08);" 
-      : "border-bottom: 1px dashed rgba(255,255,255,0.03);";
-
-    row.style.cssText = `
-      display:flex;
-      gap:0;
-      min-height:${slotHeight}px;
-      box-sizing:border-box;
-      ${rowBorderBottom}
-      ${rowBorderTop}
-      background:${rowBg};
-      transition:background 0.15s;
-      position:relative;
-    `;
-
-    // 時刻ラベルの強弱 (正時は大きく太く、30分は小さく薄く)
-    let timeLabelColor, timeLabelSize, timeLabelWeight;
-    if (sObj.m === 0) {
-      // 正時
-      timeLabelColor = isCurrentSlot ? "#63d2ff" : isPastSlot ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.55)";
-      timeLabelSize = "11px";
-      timeLabelWeight = "600";
-    } else {
-      // 30分
-      timeLabelColor = isCurrentSlot ? "#63d2ff" : isPastSlot ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.25)";
-      timeLabelSize = "9px";
-      timeLabelWeight = "400";
-    }
-
-    const nowBadge = isCurrentSlot ? `<div style="font-size:7px;color:#63d2ff;font-weight:800;letter-spacing:0.05em;margin-top:-2px;line-height:1;">NOW</div>` : "";
-    const timeLabel = document.createElement("div");
-    timeLabel.style.cssText = `
-      font-size:${timeLabelSize};
-      font-weight:${timeLabelWeight};
-      color:${timeLabelColor};
-      width:42px;
-      flex-shrink:0;
-      padding:4px 4px 0 4px;
-      text-align:center;
-      line-height:1.1;
-      box-sizing:border-box;
-      border-right:1px solid rgba(255,255,255,0.03);
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      align-items:center;
-    `;
-    timeLabel.innerHTML = `<div>${slot}</div>${nowBadge}`;
-
-    // コンテンツ領域
-    const contentDiv = document.createElement("div");
-    const paddingStyle = assignedTasks.length > 1 ? "padding: 4px 0;" : "padding: 0;";
-    contentDiv.style.cssText = `flex-grow:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;${paddingStyle}box-sizing:border-box;position:relative;z-index:2;`;
-
-    if (hasSchedule) {
-      // スケジュール被り
-    } else {
-      freeMinutes += 30;
-      if (assignedTasks.length) {
-        assignedTasks.forEach(t => {
-          const g = appState.goals.find(g => g.id === t.goalId);
-          const gs = g ? (g.shortName || "?") : null;
-          const taskRow = document.createElement("div");
-          taskRow.draggable = true;
-
-          const overdueBorder = hasOverdueTasks ? "border-left:3px solid rgba(239,68,68,0.8);" : "border-left:3px solid transparent;";
-          const taskBg = hasOverdueTasks ? "background:rgba(239,68,68,0.1);" : "";
-          taskRow.style.cssText = `
-            display:flex;
-            align-items:center;
-            gap:6px;
-            padding:2px 8px;
-            height:20px;
-            box-sizing:border-box;
-            ${overdueBorder}
-            ${taskBg}
-          `;
-
-          const titleColor = hasOverdueTasks ? "#fca5a5" : "rgba(255,255,255,0.88)";
-          const overdueTag = hasOverdueTasks
-            ? `<span style="font-size:8px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.2);padding:0px 3px;border-radius:2px;flex-shrink:0;">遅延</span>`
-            : "";
-
-          const taskNotes = appState.notes.filter(n => n.taskIds && n.taskIds.includes(t.id));
-          let noteIconHTML = "";
-          if (taskNotes.length > 0) {
-            const targetNoteId = taskNotes[0].id;
-            noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:10px; margin-left:4px; padding:2px; display:inline-flex; align-items:center; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); event.preventDefault(); viewLinkedNote('${targetNoteId}')">📝</span>`;
-          }
-
-          taskRow.innerHTML = `
-            ${overdueTag}
-            ${goalBadgeHTML(g, gs, "small")}
-            <span onclick="openEditTaskModal('${t.id}')" style="flex-grow:1;font-size:11px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${titleColor};">${t.title}</span>
-            ${noteIconHTML}
-            ${taskQuickBtns(t.id)}
-          `;
-          taskRow.addEventListener("dragstart", e => {
-            e.dataTransfer.setData("text/plain", t.id);
-            e.dataTransfer.setData("application/x-lifeorbit-task", t.id);
-            e.dataTransfer.effectAllowed = "move";
-            taskRow.style.opacity = "0.4";
-          });
-          taskRow.addEventListener("dragend", () => { taskRow.style.opacity = ""; });
-
-          // ドラッグ＆ドロップによるメモ紐付けおよびタスクのセル間移動のバブリング処理
-          taskRow.addEventListener("dragover", e => {
-            if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = "link";
-              taskRow.classList.add("drag-over-note");
-            } else if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = "move";
-            }
-          });
-          taskRow.addEventListener("dragleave", () => {
-            taskRow.classList.remove("drag-over-note");
-          });
-          taskRow.addEventListener("drop", e => {
-            e.preventDefault();
-            e.stopPropagation();
-            taskRow.classList.remove("drag-over-note");
-            const dragData = e.dataTransfer.getData("text/plain");
-            if (dragData.startsWith("note-id:")) {
-              const noteId = dragData.replace("note-id:", "");
-              linkNoteToItem(noteId, "task", t.id);
-            } else if (dragData && !dragData.startsWith("note-id:") && dragData !== "note-today") {
-              dropOnTimeline(e, slot);
-            }
-          });
-
-          contentDiv.appendChild(taskRow);
-        });
-      } else {
-        if (!isPastSlot) {
-          contentDiv.innerHTML = `<div style="padding:2px 8px;font-size:9.5px;color:rgba(255,255,255,0.12);font-style:italic;user-select:none;">ここにタスクをドロップ</div>`;
-        }
-      }
-    }
-
-    // ドラッグ＆ドロップイベント設定
-    row.addEventListener("dragover", e => {
-      if (e.dataTransfer.types.includes("application/x-lifeorbit-task")) {
-        e.preventDefault();
-        if (hasSchedule) {
-          e.dataTransfer.dropEffect = "none";
-        } else {
-          e.dataTransfer.dropEffect = "move";
-          row.style.background = "rgba(100,200,255,0.1)";
-        }
-      }
-    });
-    row.addEventListener("dragleave", () => { row.style.background = rowBg; });
-    row.addEventListener("drop", e => {
-      row.style.background = rowBg;
-      if (hasSchedule) return;
-      const dragData = e.dataTransfer.getData("text/plain");
-      if (!dragData || dragData.startsWith("note-id:") || dragData === "note-today") return;
-      dropOnTimeline(e, slot);
+      return start < 1260 && end > 540;
+    }).map(s => {
+      const rawStart = parseTime(s.startTime);
+      const rawEnd = parseTime(s.endTime);
+      return {
+        ...s,
+        _startMin: Math.max(540, rawStart),
+        _endMin: Math.min(1260, rawEnd)
+      };
     });
 
-    row.appendChild(timeLabel);
-    row.appendChild(contentDiv);
-    inner.appendChild(row);
-  });
+    dayScheds.sort((a, b) => a._startMin - b._startMin);
 
-  // 2. スケジュールを絶対配置で重ねる (破壊的変更を防ぐためシャローコピーしてローカルプロパティを付与)
-  const dayScheds = scheds.filter(s => {
-    if (s.allday) return false;
-    const start = parseTime(s.startTime);
-    const end = parseTime(s.endTime);
-    // 9:00 (540分) 〜 21:00 (1260分) の間に重なるスケジュール
-    return start < 1260 && end > 540;
-  }).map(s => {
-    const rawStart = parseTime(s.startTime);
-    const rawEnd = parseTime(s.endTime);
-    return {
-      ...s,
-      _startMin: Math.max(540, rawStart),
-      _endMin: Math.min(1260, rawEnd)
-    };
-  });
-
-  dayScheds.sort((a, b) => a._startMin - b._startMin);
-
-  const groups = [];
-  dayScheds.forEach(s => {
-    let placed = false;
-    for (const group of groups) {
-      const overlaps = group.some(other => s._startMin < other._endMin && s._endMin > other._startMin);
-      if (overlaps) {
-        group.push(s);
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) {
-      groups.push([s]);
-    }
-  });
-
-  groups.forEach(group => {
-    const columns = [];
-    group.forEach(s => {
-      let colIndex = 0;
-      while (true) {
-        if (!columns[colIndex]) {
-          columns[colIndex] = [];
-        }
-        const hasOverlap = columns[colIndex].some(other => s._startMin < other._endMin && s._endMin > other._startMin);
-        if (!hasOverlap) {
-          columns[colIndex].push(s);
-          s._colIndex = colIndex;
+    const groups = [];
+    dayScheds.forEach(s => {
+      let placed = false;
+      for (const group of groups) {
+        const overlaps = group.some(other => s._startMin < other._endMin && s._endMin > other._startMin);
+        if (overlaps) {
+          group.push(s);
+          placed = true;
           break;
         }
-        colIndex++;
+      }
+      if (!placed) {
+        groups.push([s]);
       }
     });
-    const totalCols = columns.length;
-    group.forEach(s => {
-      s._totalCols = totalCols;
+
+    groups.forEach(group => {
+      const columns = [];
+      group.forEach(s => {
+        let colIndex = 0;
+        while (true) {
+          if (!columns[colIndex]) {
+            columns[colIndex] = [];
+          }
+          const hasOverlap = columns[colIndex].some(other => s._startMin < other._endMin && s._endMin > other._startMin);
+          if (!hasOverlap) {
+            columns[colIndex].push(s);
+            s._colIndex = colIndex;
+            break;
+          }
+          colIndex++;
+        }
+      });
+      const totalCols = columns.length;
+      group.forEach(s => {
+        s._totalCols = totalCols;
+      });
     });
-  });
 
-  // 累積高さを元に、分座標から正確なY座標を取得するヘルパー関数
-  function getTimelineY(min) {
-    if (min < 540) return 0;
-    if (min > 1260) {
-      const lastRow = inner.querySelector('[data-slot="20:30"]');
-      return lastRow ? lastRow.offsetTop + lastRow.offsetHeight : 0;
-    }
-    const slotH = Math.floor(min / 60);
-    const slotM = min % 60 >= 30 ? 30 : 0;
-    const slotStr = `${String(slotH).padStart(2, "0")}:${String(slotM).padStart(2, "0")}`;
-    const row = inner.querySelector(`[data-slot="${slotStr}"]`);
-    if (!row) return 0;
+    // Y座標取得ヘルパー
+    function getTimelineY(min) {
+      if (min < 540) return 0;
+      if (min > 1260) {
+        const lastRow = inner.querySelector('[data-slot="20:30"]');
+        return lastRow ? lastRow.offsetTop + lastRow.offsetHeight : 0;
+      }
+      const slotH = Math.floor(min / 60);
+      const slotM = min % 60 >= 30 ? 30 : 0;
+      const slotStr = `${String(slotH).padStart(2, "0")}:${String(slotM).padStart(2, "0")}`;
+      const row = inner.querySelector(`[data-slot="${slotStr}"]`);
+      if (!row) return 0;
 
-    const offsetMin = min - (slotH * 60 + slotM);
-    const ratio = offsetMin / 30;
-    return row.offsetTop + (row.offsetHeight * ratio);
-  }
-
-  // 各予定要素を個別にインナーコンテナに配置（透明な全体overlayを排除することで空き時間のマウスイベントを邪魔しない）
-  dayScheds.forEach(s => {
-    const topPx = getTimelineY(s._startMin);
-    const endPx = getTimelineY(s._endMin);
-    const heightPx = endPx - topPx;
-
-    const colWidthPercent = 100 / s._totalCols;
-    const leftPercent = s._colIndex * colWidthPercent;
-
-    const eventEl = document.createElement("div");
-    const bg = s.isExternal ? "rgba(168,85,247,0.75)" : "rgba(59,130,246,0.75)";
-    const border = s.isExternal ? "1px solid rgba(168,85,247,0.9)" : "1px solid rgba(59,130,246,0.9)";
-
-    // leftとwidthの計算式に左側時刻ラベルの幅(42px)のオフセットを正確に組み込む
-    eventEl.style.cssText = `
-      position:absolute;
-      top:${topPx}px;
-      left:calc(42px + (100% - 42px) * ${leftPercent / 100} + 2px);
-      width:calc((100% - 42px) * ${colWidthPercent / 100} - 4px);
-      height:${Math.max(18, heightPx - 2)}px;
-      background:${bg};
-      border:${border};
-      border-radius:4px;
-      padding:2px 6px;
-      font-size:11px;
-      color:#fff;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      cursor:pointer;
-      display:flex;
-      flex-direction:column;
-      line-height:1.2;
-      box-sizing:border-box;
-      pointer-events:auto;
-      z-index:10;
-    `;
-    
-    eventEl.onclick = (e) => {
-      e.stopPropagation();
-      openEditScheduleModal(s.id);
-    };
-
-    const schedNotes = appState.notes.filter(n => n.scheduleIds && n.scheduleIds.includes(s.id));
-    let noteIconHTML = "";
-    if (schedNotes.length > 0) {
-      const targetNoteId = schedNotes[0].id;
-      noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:11px; position:absolute; right:6px; top:4px; z-index:15; display:inline-flex; align-items:center; padding:2px; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); event.preventDefault(); viewLinkedNote('${targetNoteId}')">📝</span>`;
+      const offsetMin = min - (slotH * 60 + slotM);
+      const ratio = offsetMin / 30;
+      return row.offsetTop + (row.offsetHeight * ratio);
     }
 
-    eventEl.innerHTML = `
-      ${noteIconHTML}
-      <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;">${s.title}</div>
-      <div style="font-size:9.5px;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;">${s.startTime}–${s.endTime}</div>
-    `;
+    dayScheds.forEach(s => {
+      const topPx = getTimelineY(s._startMin);
+      const endPx = getTimelineY(s._endMin);
+      const heightPx = endPx - topPx;
 
-    // ドラッグ＆ドロップによるメモ紐付け
-    eventEl.addEventListener("dragover", e => {
-      if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
+      const colWidthPercent = 100 / s._totalCols;
+      const leftPercent = s._colIndex * colWidthPercent;
+
+      const eventEl = document.createElement("div");
+      const bg = s.isExternal ? "rgba(168,85,247,0.75)" : "rgba(59,130,246,0.75)";
+      const border = s.isExternal ? "1px solid rgba(168,85,247,0.9)" : "1px solid rgba(59,130,246,0.9)";
+
+      eventEl.style.cssText = `
+        position:absolute;
+        top:${topPx}px;
+        left:calc(42px + (100% - 42px) * ${leftPercent / 100} + 2px);
+        width:calc((100% - 42px) * ${colWidthPercent / 100} - 4px);
+        height:${Math.max(18, heightPx - 2)}px;
+        background:${bg};
+        border:${border};
+        border-radius:4px;
+        padding:2px 6px;
+        font-size:11px;
+        color:#fff;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        cursor:pointer;
+        display:flex;
+        flex-direction:column;
+        line-height:1.2;
+        box-sizing:border-box;
+        pointer-events:auto;
+        z-index:10;
+      `;
+      
+      eventEl.onclick = (e) => {
+        e.stopPropagation();
+        openEditScheduleModal(s.id);
+      };
+
+      const schedNotes = appState.notes.filter(n => n.scheduleIds && n.scheduleIds.includes(s.id));
+      let noteIconHTML = "";
+      if (schedNotes.length > 0) {
+        const targetNoteId = schedNotes[0].id;
+        noteIconHTML = `<span class="note-link-icon" style="cursor:pointer; color:var(--accent); font-size:11px; position:absolute; right:6px; top:4px; z-index:15; display:inline-flex; align-items:center; padding:2px; pointer-events:auto;" title="関連メモを開く" onclick="event.stopPropagation(); event.preventDefault(); viewLinkedNote('${targetNoteId}')">📝</span>`;
+      }
+
+      eventEl.innerHTML = `
+        ${noteIconHTML}
+        <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;">${s.title}</div>
+        <div style="font-size:9.5px;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;">${s.startTime}–${s.endTime}</div>
+      `;
+
+      eventEl.addEventListener("dragover", e => {
+        if (e.dataTransfer.types.includes("application/x-lifeorbit-note")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "link";
+          eventEl.classList.add("drag-over-note");
+        }
+      });
+      eventEl.addEventListener("dragleave", () => {
+        eventEl.classList.remove("drag-over-note");
+      });
+      eventEl.addEventListener("drop", e => {
         e.preventDefault();
-        e.dataTransfer.dropEffect = "link";
-        eventEl.classList.add("drag-over-note");
+        e.stopPropagation();
+        eventEl.classList.remove("drag-over-note");
+        const dragData = e.dataTransfer.getData("text/plain");
+        if (dragData.startsWith("note-id:")) {
+          const noteId = dragData.replace("note-id:", "");
+          linkNoteToItem(noteId, "schedule", s.id);
+        }
+      });
+
+      inner.appendChild(eventEl);
+    });
+
+    // バッジ類の更新
+    const badgeId = containerId === "timeline-today" ? "free-time-badge" : "calendar-free-time-badge";
+    const badge = document.getElementById(badgeId);
+    if (badge) badge.textContent = `空き時間: 約${Math.round(freeMinutes/60)}時間`;
+
+    const isToday = formatDate(appState.currentDate) === formatDate(new Date());
+    if (isToday) {
+      const elapsedMinutes = (now.getHours() * 60 + now.getMinutes()) - 540;
+      if (elapsedMinutes > 0) {
+        const scrollOffset = Math.max(0, (elapsedMinutes - 30) * minRatio);
+        setTimeout(() => {
+          el.scrollTop = scrollOffset;
+        }, 50);
       }
-    });
-    eventEl.addEventListener("dragleave", () => {
-      eventEl.classList.remove("drag-over-note");
-    });
-    eventEl.addEventListener("drop", e => {
-      e.preventDefault();
-      e.stopPropagation();
-      eventEl.classList.remove("drag-over-note");
-      const dragData = e.dataTransfer.getData("text/plain");
-      if (dragData.startsWith("note-id:")) {
-        const noteId = dragData.replace("note-id:", "");
-        linkNoteToItem(noteId, "schedule", s.id);
-      }
-    });
-
-    inner.appendChild(eventEl);
-  });
-
-  const badge = document.getElementById("free-time-badge");
-  if (badge) badge.textContent = `空き時間: 約${Math.round(freeMinutes/60)}時間`;
-
-  const isToday = formatDate(appState.currentDate) === formatDate(new Date());
-  if (isToday) {
-    const now = new Date();
-    const elapsedMinutes = (now.getHours() * 60 + now.getMinutes()) - 540;
-    if (elapsedMinutes > 0) {
-      const scrollOffset = Math.max(0, (elapsedMinutes - 30) * minRatio);
-      setTimeout(() => {
-        el.scrollTop = scrollOffset;
-      }, 50);
     }
-  }
+  });
+}
 }
 
 
@@ -2898,8 +2905,15 @@ function switchView(viewName) {
     else sec.classList.remove("active");
   });
   // ヘッダータイトル更新
-  const titles = { dashboard: "ダッシュボード", goals: "目標 (Goals)", tasks: "タスク (Tasks)", calendar: "カレンダー", review: "レビュー", notes: "メモ (Notes)", settings: "設定・バックアップ" };
-  const subs = { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "タスクのカンバン管理", calendar: "スケジュールとカレンダー連携", review: "活動実績の振り返りと未完了タスクの棚卸し", notes: "日々のログや気づきの書き散らしと管理", settings: "データの管理とバックアップ" };
+  const isSP = window.innerWidth <= 768;
+  const titles = isSP 
+    ? { dashboard: "ダッシュボード", goals: "目標", tasks: "タスク", calendar: "予定", review: "レビュー", notes: "メモ", settings: "設定" }
+    : { dashboard: "ダッシュボード", goals: "目標 (Goals)", tasks: "タスク (Tasks)", calendar: "カレンダー", review: "レビュー", notes: "メモ (Notes)", settings: "設定・バックアップ" };
+  
+  const subs = isSP
+    ? { dashboard: "今日の軌道と目標の進捗状況", goals: "目標管理", tasks: "タスク一覧", calendar: "今日のスケジュール", review: "実績の振り返り", notes: "日々のログや気づき", settings: "データ管理" }
+    : { dashboard: "今日の軌道と目標の進捗状況", goals: "大目標とマイルストーンの管理", tasks: "タスクのカンバン管理", calendar: "スケジュールとカレンダー連携", review: "活動実績の振り返りと未完了タスクの棚卸し", notes: "日々のログや気づきの書き散らしと管理", settings: "データの管理とバックアップ" };
+
   const titleEl = document.getElementById("view-title");
   if (titleEl) titleEl.textContent = titles[viewName] || viewName;
   if (subEl) subEl.textContent = subs[viewName] || "";
@@ -2921,6 +2935,13 @@ function switchView(viewName) {
 // ==========================================================================
 
 function setupUI() {
+  if (window.innerWidth <= 768 && appState.activeView === "dashboard") {
+    appState.activeView = "calendar";
+    // ボトムナビのアクティブ表示切替
+    document.querySelectorAll(".sp-nav-item").forEach(b => b.classList.remove("active"));
+    const schTab = document.getElementById("sp-nav-schedule");
+    if (schTab) schTab.classList.add("active");
+  }
   switchView(appState.activeView);
 }
 
@@ -2958,6 +2979,47 @@ function setupEventListeners() {
   }
   if (datePicker) {
     datePicker.addEventListener("change", (e) => {
+      if (e.target.value) {
+        appState.currentDate = new Date(e.target.value);
+        saveData();
+        renderAll();
+      }
+    });
+  }
+
+  // カレンダー予定日付切り替え (SP用)
+  const calPrevBtn = document.getElementById("btn-calendar-prev-day");
+  const calNextBtn = document.getElementById("btn-calendar-next-day");
+  const calTodayBtn = document.getElementById("btn-calendar-today");
+  const calDatePicker = document.getElementById("calendar-date-picker");
+
+  if (calPrevBtn) {
+    calPrevBtn.addEventListener("click", () => {
+      const cur = new Date(appState.currentDate);
+      cur.setDate(cur.getDate() - 1);
+      appState.currentDate = cur;
+      saveData();
+      renderAll();
+    });
+  }
+  if (calNextBtn) {
+    calNextBtn.addEventListener("click", () => {
+      const cur = new Date(appState.currentDate);
+      cur.setDate(cur.getDate() + 1);
+      appState.currentDate = cur;
+      saveData();
+      renderAll();
+    });
+  }
+  if (calTodayBtn) {
+    calTodayBtn.addEventListener("click", () => {
+      appState.currentDate = new Date();
+      saveData();
+      renderAll();
+    });
+  }
+  if (calDatePicker) {
+    calDatePicker.addEventListener("change", (e) => {
       if (e.target.value) {
         appState.currentDate = new Date(e.target.value);
         saveData();
@@ -3166,7 +3228,7 @@ function setupEventListeners() {
   });
 
   // ===== SP ボトムナビゲーション =====
-  const spTabViewMap = { schedule: "dashboard", tasks: "tasks", notes: "notes" };
+  const spTabViewMap = { schedule: "calendar", tasks: "tasks", notes: "notes" };
   document.querySelectorAll(".sp-nav-item[data-sp-tab]").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".sp-nav-item").forEach(b => b.classList.remove("active"));
