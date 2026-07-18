@@ -1564,7 +1564,7 @@ function renderTimeline() {
     // Y座標取得ヘルパー
     function getTimelineY(min) {
       if (min < 540) return 0;
-      if (min > 1260) {
+      if (min >= 1260) {
         const lastRow = inner.querySelector('[data-slot="20:30"]');
         return lastRow ? lastRow.offsetTop + lastRow.offsetHeight : 0;
       }
