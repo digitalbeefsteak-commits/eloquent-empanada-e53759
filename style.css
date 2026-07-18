@@ -1873,21 +1873,11 @@ label {
   }
 
   .grid-col-center {
-    order: 2;
-    width: 100%;
-    max-width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    display: none !important;
   }
 
   .grid-col-right {
-    order: 3;
-    width: 100%;
-    max-width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    display: none !important;
   }
 
   .card-todo-today {
