@@ -4221,7 +4221,7 @@ function initNotesView() {
         scheduleIds: [],
         dashboardArchived: false
       };
-      pushUndoSnapshot();
+      saveToUndoStack();
       appState.notes.push(newNote);
       saveData();
       spTextarea.value = "";
