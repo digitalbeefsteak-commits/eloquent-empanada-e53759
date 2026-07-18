@@ -1335,7 +1335,7 @@ function renderTimeline() {
     row.style.cssText = `
       display:flex;
       gap:0;
-      height:${slotHeight}px;
+      min-height:${slotHeight}px;
       box-sizing:border-box;
       ${rowBorderBottom}
       ${rowBorderTop}
@@ -1379,8 +1379,8 @@ function renderTimeline() {
     timeLabel.innerHTML = `<div>${slot}</div>${nowBadge}`;
 
     // コンテンツ領域
-    const contentDiv = document.createElement("div");
-    contentDiv.style.cssText = "flex-grow:1;min-width:0;display:flex;flex-direction:column;justify-content:center;height:100%;box-sizing:border-box;position:relative;z-index:2;";
+    const paddingStyle = assignedTasks.length > 1 ? "padding: 4px 0;" : "padding: 0;";
+    contentDiv.style.cssText = `flex-grow:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;${paddingStyle}box-sizing:border-box;position:relative;z-index:2;`;
 
     if (hasSchedule) {
       // スケジュール被り
@@ -1548,11 +1548,29 @@ function renderTimeline() {
     });
   });
 
+  // 累積高さを元に、分座標から正確なY座標を取得するヘルパー関数
+  function getTimelineY(min) {
+    if (min < 540) return 0;
+    if (min > 1260) {
+      const lastRow = inner.querySelector('[data-slot="20:30"]');
+      return lastRow ? lastRow.offsetTop + lastRow.offsetHeight : 0;
+    }
+    const slotH = Math.floor(min / 60);
+    const slotM = min % 60 >= 30 ? 30 : 0;
+    const slotStr = `${String(slotH).padStart(2, "0")}:${String(slotM).padStart(2, "0")}`;
+    const row = inner.querySelector(`[data-slot="${slotStr}"]`);
+    if (!row) return 0;
+
+    const offsetMin = min - (slotH * 60 + slotM);
+    const ratio = offsetMin / 30;
+    return row.offsetTop + (row.offsetHeight * ratio);
+  }
+
   // 各予定要素を個別にインナーコンテナに配置（透明な全体overlayを排除することで空き時間のマウスイベントを邪魔しない）
   dayScheds.forEach(s => {
-    const duration = s._endMin - s._startMin;
-    const topPx = (s._startMin - 540) * minRatio;
-    const heightPx = duration * minRatio;
+    const topPx = getTimelineY(s._startMin);
+    const endPx = getTimelineY(s._endMin);
+    const heightPx = endPx - topPx;
 
     const colWidthPercent = 100 / s._totalCols;
     const leftPercent = s._colIndex * colWidthPercent;
