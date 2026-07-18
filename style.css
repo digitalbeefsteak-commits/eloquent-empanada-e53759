@@ -667,7 +667,7 @@ body {
 .todo-quick-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
   max-height: calc(100vh - 420px);
   height: 100%;
   overflow-y: auto;

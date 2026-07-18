@@ -1208,7 +1208,7 @@ function renderTodayTasks() {
       bgStyle = "background: rgba(239, 68, 68, 0.04);"; // 期限切れ時はうっすら赤背景で警告
     }
 
-    li.style.cssText = `display:flex;align-items:center;gap:7px;padding:5px 4px;${borderStyle}cursor:grab;user-select:none;opacity:${opacityVal};${bgStyle}`;
+    li.style.cssText = `display:flex;align-items:center;gap:7px;padding:3px 4px;${borderStyle}cursor:grab;user-select:none;opacity:${opacityVal};${bgStyle}`;
 
     let dateStyle = "background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);";
     if (isOverdue) {
