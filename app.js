@@ -1654,6 +1654,18 @@ function renderTimeline() {
 
   const badge = document.getElementById("free-time-badge");
   if (badge) badge.textContent = `空き時間: 約${Math.round(freeMinutes/60)}時間`;
+
+  const isToday = formatDate(appState.currentDate) === formatDate(new Date());
+  if (isToday) {
+    const now = new Date();
+    const elapsedMinutes = (now.getHours() * 60 + now.getMinutes()) - 540;
+    if (elapsedMinutes > 0) {
+      const scrollOffset = Math.max(0, (elapsedMinutes - 30) * minRatio);
+      setTimeout(() => {
+        el.scrollTop = scrollOffset;
+      }, 50);
+    }
+  }
 }
 
 
