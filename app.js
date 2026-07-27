@@ -723,6 +723,7 @@ function loadData() {
       appState.tasks = parsed.tasks || [];
       appState.schedules = parsed.schedules || [];
       appState.notes = parsed.notes || [];
+      appState.chatHistory = parsed.chatHistory || []; // チャット履歴のロード
       appState.lastSyncTime = parsed.lastSyncTime || null;
       
       // shortName が古いデータに無ければマージ
@@ -748,6 +749,7 @@ function saveData() {
     tasks: appState.tasks,
     schedules: appState.schedules,
     notes: appState.notes,
+    chatHistory: appState.chatHistory || [], // チャット履歴の保存
     lastSyncTime: appState.lastSyncTime
   }));
   syncDataToFirebase();
@@ -2914,7 +2916,7 @@ function switchView(viewName) {
   } else if (viewName === "notes") {
     renderNotes();
   } else if (viewName === "chat") {
-    if (typeof scrollToChatBottom === "function") scrollToChatBottom();
+    if (typeof renderChatHistory === "function") renderChatHistory();
   }
 
   // nav-item の active 切り替え
@@ -4141,15 +4143,24 @@ function loadFirebaseData(syncKey) {
         } catch (e) {}
       }
 
-      if (shouldUpdate && (data.goals || data.tasks || data.schedules || data.notes)) {
+      if (shouldUpdate && (data.goals || data.tasks || data.schedules || data.notes || data.chatHistory)) {
         appState.goals = data.goals || [];
         appState.tasks = data.tasks || [];
         appState.schedules = data.schedules || [];
         appState.notes = data.notes || [];
+        appState.chatHistory = data.chatHistory || [];
         appState.lastSyncTime = data.lastSyncTime || null;
         
-        localStorage.setItem("lifeorbit_data", JSON.stringify(data));
+        localStorage.setItem("lifeorbit_data", JSON.stringify({
+          goals: appState.goals,
+          tasks: appState.tasks,
+          schedules: appState.schedules,
+          notes: appState.notes,
+          chatHistory: appState.chatHistory,
+          lastSyncTime: appState.lastSyncTime
+        }));
         renderAll();
+        if (typeof renderChatHistory === "function") renderChatHistory();
         console.log("Firestore data synchronized in real-time.");
       }
     } else {
@@ -4175,6 +4186,7 @@ function syncDataToFirebase() {
     tasks: appState.tasks,
     schedules: appState.schedules,
     notes: appState.notes,
+    chatHistory: appState.chatHistory || [],
     lastSyncTime: appState.lastSyncTime
   })
   .then(() => {
@@ -5150,8 +5162,8 @@ window.removeNoteRelation = removeNoteRelation;
 // AI ASSISTANT (CHAT) CORE LOGIC
 // ==========================================================================
 
-// チャット履歴 (role, parts: [{text: ...}])
-appState.chatHistory = [];
+// チャット履歴 (role, content) - loadData() で復元される。ここでは初期化しない。
+// appState.chatHistory は loadData() によってセットされる。
 
 // 最新のアプリ内データをマークダウン形式のテキストにコンテキスト化する
 function getAppContextAsText() {
@@ -5299,8 +5311,10 @@ function syncChatContext() {
 // チャット履歴クリア
 function clearChatHistory() {
   appState.chatHistory = [];
+  saveData(); // 永続化
   const box = document.getElementById("chat-messages-box");
   if (box) {
+    delete box.dataset.rendered; // 描画済みフラグをリセット
     box.innerHTML = `
       <div class="chat-message assistant" style="display:flex; gap:12px; max-width:85%; align-self:flex-start;">
         <div class="message-avatar" style="width:32px; height:32px; border-radius:50%; background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.3); display:flex; align-items:center; justify-content:center; color:#a855f7; flex-shrink:0;">
@@ -5314,6 +5328,26 @@ function clearChatHistory() {
     `;
     if (window.lucide) window.lucide.createIcons();
   }
+}
+
+// ページリロード後にチャット履歴をUIへ復元する
+function renderChatHistory() {
+  const box = document.getElementById("chat-messages-box");
+  if (!box) return;
+
+  // 既にメッセージが描画済みの場合は再描画しない（同一セッション内のタブ切替対策）
+  if (box.dataset.rendered === "true") return;
+
+  const history = appState.chatHistory || [];
+  if (history.length === 0) return; // 履歴なし → welcome メッセージはそのまま
+
+  // 既存の welcome メッセージをクリアして履歴を復元
+  box.innerHTML = "";
+  history.forEach(msg => {
+    addMessageToScreen(msg.role, msg.content);
+  });
+  box.dataset.rendered = "true";
+  scrollToChatBottom();
 }
 
 // チャット送信ハンドラ
@@ -5469,6 +5503,11 @@ ${contextText}`;
       content: finalReplyText,
       parts: finalModelParts
     });
+    saveData(); // チャット履歴を永続化
+
+    // 描画済みフラグをセット（タブ切替時の二重描画防止）
+    const chatBox = document.getElementById("chat-messages-box");
+    if (chatBox) chatBox.dataset.rendered = "true";
     
     scrollToChatBottom();
 
@@ -5696,6 +5735,7 @@ function executeFunctionCall(name, args) {
 
 window.getDefaultSystemPrompt = getDefaultSystemPrompt;
 window.executeFunctionCall = executeFunctionCall;
+window.renderChatHistory = renderChatHistory;
 
 // 初期ロード画面を非表示にする
 function hideLoadingScreen() {
