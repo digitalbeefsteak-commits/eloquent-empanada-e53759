@@ -3120,7 +3120,7 @@ function setupEventListeners() {
   const btnToday = document.getElementById("btn-cal-today");
   if (btnToday) btnToday.addEventListener("click", () => { appState.viewDate = new Date(appState.currentDate); renderCalendar(); });
 
-  // Gemini APIキーとモデルの初期読み込み
+  // Gemini APIキー、モデル、プロンプトの初期読み込み
   const geminiKeyInput = document.getElementById("gemini-api-key-input");
   if (geminiKeyInput) {
     geminiKeyInput.value = localStorage.getItem("gemini_api_key") || "";
@@ -3129,6 +3129,10 @@ function setupEventListeners() {
   if (geminiModelSelect) {
     geminiModelSelect.value = localStorage.getItem("gemini_model") || "gemini-3.6-flash";
   }
+  const geminiPromptInput = document.getElementById("gemini-system-prompt-input");
+  if (geminiPromptInput) {
+    geminiPromptInput.value = localStorage.getItem("gemini_system_prompt") || getDefaultSystemPrompt();
+  }
 
   // Gemini設定の保存
   const btnSaveGeminiKey = document.getElementById("btn-save-gemini-key");
@@ -3136,8 +3140,10 @@ function setupEventListeners() {
     btnSaveGeminiKey.addEventListener("click", () => {
       const keyVal = geminiKeyInput ? geminiKeyInput.value.trim() : "";
       const modelVal = geminiModelSelect ? geminiModelSelect.value : "gemini-3.6-flash";
+      const promptVal = geminiPromptInput ? geminiPromptInput.value.trim() : getDefaultSystemPrompt();
       localStorage.setItem("gemini_api_key", keyVal);
       localStorage.setItem("gemini_model", modelVal);
+      localStorage.setItem("gemini_system_prompt", promptVal);
       // ユーザーのトーンに合わせたプロフェッショナルな通知
       showNotification("AIアシスタント設定を保存しました。");
     });
@@ -5317,15 +5323,8 @@ async function handleChatSend() {
     const contextText = getAppContextAsText();
 
     // システム指示プロンプト
-    const systemPrompt = `あなたは個人向けの仕事効率化AIアシスタントです。アプリ名「LifeOrbit」の中で動いています。
-
-【最優先指示: 大目標とマイルストーンの達成重視】
-このユーザーは「大目標」とそれに紐づく「マイルストーン」の達成を最も重視しています。
-すべての予定やタスクは、これらの目標に向かうロードマップを形成するものです。
-回答・アドバイスを行う際は、常にユーザーの「目標」と「マイルストーン」の状況を意識し、現在設定されている目標の達成度を最大化するための具体的な段取り、タスクの進め方、調整のアドバイスなどを主軸にして回答を行ってください。
-
-ユーザーのタスク、予定（スケジュール）、目標、メモの状況をすべて把握したうえで、ユーザーの仕事全般のアドバイスやサポートをしてください。
-トーンはプロフェッショナルで簡潔にしてください。過剰な説明テキストや、かしこまりすぎた冗長な挨拶は不要です。質問に対して具体的でアクション可能なアドバイスを返してください。
+    const userPrompt = localStorage.getItem("gemini_system_prompt") || getDefaultSystemPrompt();
+    const systemPrompt = `${userPrompt}
 
 現在のユーザーのデータは以下の通りです。
 ${contextText}`;
@@ -5333,10 +5332,11 @@ ${contextText}`;
     // Gemini API用のリクエスト履歴構築
     const apiHistory = [];
     appState.chatHistory.forEach(msg => {
-      apiHistory.push({
-        role: msg.role === "user" ? "user" : "model",
-        parts: [{ text: msg.content }]
-      });
+      if (msg.role === "user") {
+        apiHistory.push({ role: "user", parts: [{ text: msg.content }] });
+      } else if (msg.role === "assistant") {
+        apiHistory.push({ role: "model", parts: msg.parts || [{ text: msg.content }] });
+      }
     });
 
     // 今回のメッセージを追加
@@ -5348,38 +5348,104 @@ ${contextText}`;
     // 使用モデルの取得 (標準: gemini-3.6-flash)
     const model = localStorage.getItem("gemini_model") || "gemini-3.6-flash";
 
-    // リクエスト送信
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        contents: apiHistory,
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        }
-      })
-    });
+    let loopCount = 0;
+    let finalReplyText = "";
+    let finalModelParts = null;
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      const errMsg = errData.error ? errData.error.message : response.statusText;
-      throw new Error(`Gemini API エラー: ${errMsg}`);
+    // AIが関数呼び出しを終了するまでループで通信を継続（無限ループ防止のため最大5回制限）
+    while (loopCount < 5) {
+      loopCount++;
+
+      // リクエスト送信
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: apiHistory,
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          tools: geminiTools
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = errData.error ? errData.error.message : response.statusText;
+        throw new Error(`Gemini API エラー: ${errMsg}`);
+      }
+
+      const resJson = await response.json();
+      const candidate = resJson.candidates[0];
+      const modelParts = candidate.content.parts;
+
+      // モデルのレスポンスパーツを履歴追加用に退避
+      finalModelParts = modelParts;
+
+      // parts の中に functionCall が含まれるか？
+      const hasFunctionCall = modelParts.some(p => p.functionCall);
+
+      if (hasFunctionCall) {
+        // API履歴にモデル側の呼び出し指示を追加
+        apiHistory.push({
+          role: "model",
+          parts: modelParts
+        });
+
+        // 呼び出されたすべての関数を順番に実行する
+        const functionResponseParts = [];
+
+        for (const part of modelParts) {
+          if (part.functionCall) {
+            const { name, args } = part.functionCall;
+            // 関数の実行
+            const result = executeFunctionCall(name, args);
+            
+            // 実行結果を role: "function" / name: 関数名 で格納
+            functionResponseParts.push({
+              functionResponse: {
+                name: name,
+                response: result
+              }
+            });
+
+            // 画面上に実行した旨をトースト表示
+            showNotification(`AIが「${name}」を実行しました。`);
+          }
+        }
+
+        // 実行結果を API 履歴に追加して、再度ループへ
+        apiHistory.push({
+          role: "user",
+          parts: functionResponseParts
+        });
+
+      } else {
+        // テキスト応答があった場合はループを終了
+        finalReplyText = modelParts.map(p => p.text || "").join("\n");
+        break;
+      }
     }
 
-    const resJson = await response.json();
-    const replyText = resJson.candidates[0].content.parts[0].text;
+    if (!finalReplyText) {
+      finalReplyText = "処理が完了しました。";
+    }
 
     // ローディングインジケーターを削除
     if (loadingEl) loadingEl.remove();
 
     // 3. アシスタントのメッセージを追加
-    addMessageToScreen("assistant", replyText);
+    addMessageToScreen("assistant", finalReplyText);
 
     // 履歴に保存
     appState.chatHistory.push({ role: "user", content: text });
-    appState.chatHistory.push({ role: "assistant", content: replyText });
+    appState.chatHistory.push({ 
+      role: "assistant", 
+      content: finalReplyText,
+      parts: finalModelParts
+    });
     
     scrollToChatBottom();
 
@@ -5465,3 +5531,145 @@ window.linkNoteToItem = linkNoteToItem;
 window.renderDashboardStickyNotes = renderDashboardStickyNotes;
 window.viewLinkedNote = viewLinkedNote;
 window.removeNoteRelation = removeNoteRelation;
+
+// デフォルトのシステムプロンプトを取得する
+function getDefaultSystemPrompt() {
+  return `あなたは個人向けの仕事効率化AIアシスタントです。アプリ名「LifeOrbit」の中で動いています。
+
+【最優先指示: 大目標とマイルストーンの達成重視】
+このユーザーは「大目標」とそれに紐づく「マイルストーン」の達成を最も重視しています。
+すべての予定やタスクは、これらの目標に向かうロードマップを形成するものです。
+回答・アドバイスを行う際は、常にユーザーの「目標」と「マイルストーン」の状況を意識し、現在設定されている目標の達成度を最大化するための具体的な段取り、タスクの進め方、調整のアドバイスなどを主軸にして回答を行ってください。
+
+ユーザーのタスク、予定（スケジュール）、目標、メモの状況をすべて把握したうえで、ユーザーの仕事全般のアドバイスやサポートをしてください。
+トーンはプロフェッショナルで簡潔にしてください。過剰な説明テキストや、かしこまりすぎた冗長な挨拶は不要です。質問に対して具体的でアクション可能なアドバイスを返してください。`;
+}
+
+// Function Calling で AI が呼び出せる関数定義 (tools)
+const geminiTools = [
+  {
+    functionDeclarations: [
+      {
+        name: "createTask",
+        description: "新規タスクを追加・作成します。",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            title: { type: "STRING", description: "タスク名" },
+            duedate: { type: "STRING", description: "期限日 (形式: YYYY-MM-DD)" },
+            priority: { type: "STRING", description: "優先度。'high' (高), 'medium' (中), 'low' (低), 'none' (未指定) のいずれか", enum: ["high", "medium", "low", "none"] }
+          },
+          required: ["title"]
+        }
+      },
+      {
+        name: "createSchedule",
+        description: "新規予定（スケジュール）を追加・作成します。",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            title: { type: "STRING", description: "予定名" },
+            startDate: { type: "STRING", description: "開始日 (形式: YYYY-MM-DD)" },
+            startTime: { type: "STRING", description: "開始時刻 (形式: HH:MM, 例: '14:30')" },
+            endDate: { type: "STRING", description: "終了日 (形式: YYYY-MM-DD)" },
+            endTime: { type: "STRING", description: "終了時刻 (形式: HH:MM, 例: '15:30')" },
+            desc: { type: "STRING", description: "予定の補足説明" }
+          },
+          required: ["title", "startDate", "endDate"]
+        }
+      },
+      {
+        name: "createNote",
+        description: "新規メモを追加・作成します。",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            content: { type: "STRING", description: "メモ本文" }
+          },
+          required: ["content"]
+        }
+      },
+      {
+        name: "updateSystemPrompt",
+        description: "AIアシスタント自身のシステムプロンプト（指示内容）を直接編集・更新します。",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            prompt: { type: "STRING", description: "新しいシステムプロンプトの全文" }
+          },
+          required: ["prompt"]
+        }
+      }
+    ]
+  }
+];
+
+// AIから指示された関数を実行する
+function executeFunctionCall(name, args) {
+  try {
+    if (name === "createTask") {
+      const newTask = {
+        id: "task-" + Math.random().toString(36).substr(2, 9),
+        title: args.title,
+        duedate: args.duedate || "",
+        priority: args.priority || "none",
+        status: "today", // デフォルトは今日
+        createdAt: new Date().toISOString()
+      };
+      saveToUndoStack();
+      appState.tasks.push(newTask);
+      saveData();
+      renderAll();
+      return { status: "success", message: `タスク「${args.title}」を作成しました。` };
+    } 
+    
+    else if (name === "createSchedule") {
+      const newSch = {
+        id: "schedule-" + Math.random().toString(36).substr(2, 9),
+        title: args.title,
+        startDate: args.startDate,
+        startTime: args.startTime || "10:00",
+        endDate: args.endDate,
+        endTime: args.endTime || "11:00",
+        allday: false,
+        desc: args.desc || "",
+        isExternal: false
+      };
+      saveToUndoStack();
+      appState.schedules.push(newSch);
+      saveData();
+      renderAll();
+      return { status: "success", message: `予定「${args.title}」（${args.startDate} ${args.startTime || ""}〜）を作成しました。` };
+    } 
+    
+    else if (name === "createNote") {
+      const newNote = {
+        id: "note-" + Math.random().toString(36).substr(2, 9),
+        date: formatDate(appState.currentDate),
+        content: args.content,
+        taskIds: [],
+        scheduleIds: [],
+        dashboardArchived: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      appState.notes.push(newNote);
+      saveData();
+      renderAll();
+      return { status: "success", message: `メモ「${args.content.substring(0, 15)}...」を作成しました。` };
+    } 
+    
+    else if (name === "updateSystemPrompt") {
+      localStorage.setItem("gemini_system_prompt", args.prompt);
+      const promptInput = document.getElementById("gemini-system-prompt-input");
+      if (promptInput) promptInput.value = args.prompt;
+      return { status: "success", message: "システムプロンプトを最新の指示内容に更新しました。" };
+    }
+  } catch (err) {
+    return { status: "error", message: err.message };
+  }
+  return { status: "error", message: `未知の関数: ${name}` };
+}
+
+window.getDefaultSystemPrompt = getDefaultSystemPrompt;
+window.executeFunctionCall = executeFunctionCall;
