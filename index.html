@@ -96,7 +96,7 @@
             <span class="sync-time" id="sync-time-text">未同期 (iCSをドロップ)</span>
           </div>
         </div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.6.4</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.22);text-align:center;margin-top:10px;font-family:'Outfit',sans-serif;letter-spacing:0.05em;font-weight:500;">Version 1.6.5</div>
       </div>
     </aside>
 
@@ -658,6 +658,15 @@
                 </p>
                 <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
                   <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:12px;">
+                    <div style="margin-bottom:10px;">
+                      <label style="display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600;">使用モデル</label>
+                      <select id="gemini-model-select" style="width:100%;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:8px;color:#fff;font-size:12px;cursor:pointer;outline:none;">
+                        <option value="gemini-2.0-flash">gemini-2.0-flash (標準 - 高速・軽量)</option>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash (最新フラッシュ)</option>
+                        <option value="gemini-2.0-pro-exp">gemini-2.0-pro-exp (実験的高機能)</option>
+                        <option value="gemini-1.5-pro">gemini-1.5-pro (高機能モデル)</option>
+                      </select>
+                    </div>
                     <label style="display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600;">Gemini APIキー</label>
                     <div style="display:flex;align-items:center;gap:8px;">
                       <input type="password" id="gemini-api-key-input" placeholder="AIzaSy..." style="flex:1;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:8px;color:#fff;font-size:12px;">
@@ -1063,6 +1072,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- JavaScript -->
-  <script src="app.js?v=1.6.4"></script>
+  <script src="app.js?v=1.6.5"></script>
 </body>
 </html>

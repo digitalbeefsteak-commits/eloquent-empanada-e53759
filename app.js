@@ -3120,18 +3120,24 @@ function setupEventListeners() {
   const btnToday = document.getElementById("btn-cal-today");
   if (btnToday) btnToday.addEventListener("click", () => { appState.viewDate = new Date(appState.currentDate); renderCalendar(); });
 
-  // Gemini APIキーの初期読み込み
+  // Gemini APIキーとモデルの初期読み込み
   const geminiKeyInput = document.getElementById("gemini-api-key-input");
   if (geminiKeyInput) {
     geminiKeyInput.value = localStorage.getItem("gemini_api_key") || "";
   }
+  const geminiModelSelect = document.getElementById("gemini-model-select");
+  if (geminiModelSelect) {
+    geminiModelSelect.value = localStorage.getItem("gemini_model") || "gemini-2.0-flash";
+  }
 
-  // Gemini APIキーの保存
+  // Gemini設定の保存
   const btnSaveGeminiKey = document.getElementById("btn-save-gemini-key");
   if (btnSaveGeminiKey) {
     btnSaveGeminiKey.addEventListener("click", () => {
-      const keyVal = geminiKeyInput.value.trim();
+      const keyVal = geminiKeyInput ? geminiKeyInput.value.trim() : "";
+      const modelVal = geminiModelSelect ? geminiModelSelect.value : "gemini-2.0-flash";
       localStorage.setItem("gemini_api_key", keyVal);
+      localStorage.setItem("gemini_model", modelVal);
       // ユーザーのトーンに合わせたプロフェッショナルな通知
       showNotification("AIアシスタント設定を保存しました。");
     });
@@ -5333,8 +5339,11 @@ ${contextText}`;
       parts: [{ text: text }]
     });
 
+    // 使用モデルの取得 (標準: gemini-2.0-flash)
+    const model = localStorage.getItem("gemini_model") || "gemini-2.0-flash";
+
     // リクエスト送信
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
