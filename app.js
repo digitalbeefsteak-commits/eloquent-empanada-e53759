@@ -3127,7 +3127,7 @@ function setupEventListeners() {
   }
   const geminiModelSelect = document.getElementById("gemini-model-select");
   if (geminiModelSelect) {
-    geminiModelSelect.value = localStorage.getItem("gemini_model") || "gemini-2.0-flash";
+    geminiModelSelect.value = localStorage.getItem("gemini_model") || "gemini-3.6-flash";
   }
 
   // Gemini設定の保存
@@ -3135,7 +3135,7 @@ function setupEventListeners() {
   if (btnSaveGeminiKey) {
     btnSaveGeminiKey.addEventListener("click", () => {
       const keyVal = geminiKeyInput ? geminiKeyInput.value.trim() : "";
-      const modelVal = geminiModelSelect ? geminiModelSelect.value : "gemini-2.0-flash";
+      const modelVal = geminiModelSelect ? geminiModelSelect.value : "gemini-3.6-flash";
       localStorage.setItem("gemini_api_key", keyVal);
       localStorage.setItem("gemini_model", modelVal);
       // ユーザーのトーンに合わせたプロフェッショナルな通知
@@ -5339,8 +5339,8 @@ ${contextText}`;
       parts: [{ text: text }]
     });
 
-    // 使用モデルの取得 (標準: gemini-2.0-flash)
-    const model = localStorage.getItem("gemini_model") || "gemini-2.0-flash";
+    // 使用モデルの取得 (標準: gemini-3.6-flash)
+    const model = localStorage.getItem("gemini_model") || "gemini-3.6-flash";
 
     // リクエスト送信
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
