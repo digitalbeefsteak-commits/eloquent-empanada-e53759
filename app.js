@@ -2893,6 +2893,8 @@ function switchView(viewName) {
     renderKanban();
   } else if (viewName === "notes") {
     renderNotes();
+  } else if (viewName === "chat") {
+    if (typeof scrollToChatBottom === "function") scrollToChatBottom();
   }
 
   // nav-item の active 切り替え
@@ -2913,6 +2915,7 @@ function switchView(viewName) {
     calendar: "予定", 
     review: "振り返り", 
     notes: "メモ", 
+    chat: "アシスタント",
     settings: "設定" 
   };
   
@@ -2923,6 +2926,7 @@ function switchView(viewName) {
     calendar: "予定の管理とカレンダー連携", 
     review: "活動実績の振り返り", 
     notes: "メモの作成と管理", 
+    chat: "AIによる仕事全般のサポート",
     settings: "データの管理とバックアップ" 
   };
 
@@ -3115,6 +3119,58 @@ function setupEventListeners() {
   if (btnNext) btnNext.addEventListener("click", nextMonth);
   const btnToday = document.getElementById("btn-cal-today");
   if (btnToday) btnToday.addEventListener("click", () => { appState.viewDate = new Date(appState.currentDate); renderCalendar(); });
+
+  // Gemini APIキーの初期読み込み
+  const geminiKeyInput = document.getElementById("gemini-api-key-input");
+  if (geminiKeyInput) {
+    geminiKeyInput.value = localStorage.getItem("gemini_api_key") || "";
+  }
+
+  // Gemini APIキーの保存
+  const btnSaveGeminiKey = document.getElementById("btn-save-gemini-key");
+  if (btnSaveGeminiKey) {
+    btnSaveGeminiKey.addEventListener("click", () => {
+      const keyVal = geminiKeyInput.value.trim();
+      localStorage.setItem("gemini_api_key", keyVal);
+      // ユーザーのトーンに合わせたプロフェッショナルな通知
+      showNotification("AIアシスタント設定を保存しました。");
+    });
+  }
+
+  // チャット: 最新データを同期
+  const btnSyncContext = document.getElementById("btn-sync-chat-context");
+  if (btnSyncContext) {
+    btnSyncContext.addEventListener("click", () => {
+      syncChatContext();
+    });
+  }
+
+  // チャット: 会話クリア
+  const btnClearChat = document.getElementById("btn-clear-chat");
+  if (btnClearChat) {
+    btnClearChat.addEventListener("click", () => {
+      clearChatHistory();
+    });
+  }
+
+  // チャット: 送信
+  const btnSendChat = document.getElementById("btn-send-chat");
+  if (btnSendChat) {
+    btnSendChat.addEventListener("click", () => {
+      handleChatSend();
+    });
+  }
+
+  // チャット: テキストエリアEnter送信
+  const chatTextarea = document.getElementById("chat-input-textarea");
+  if (chatTextarea) {
+    chatTextarea.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleChatSend();
+      }
+    });
+  }
 
   // 月間/週間切り替え (UI同期)
   const btnMonth = document.getElementById("btn-view-month");
@@ -5049,6 +5105,346 @@ function removeNoteRelation(noteId, type, itemId) {
   }
 }
 
+window.initDashboardNote = initDashboardNote;
+window.linkNoteToItem = linkNoteToItem;
+window.renderDashboardStickyNotes = renderDashboardStickyNotes;
+window.viewLinkedNote = viewLinkedNote;
+window.removeNoteRelation = removeNoteRelation;
+
+// ==========================================================================
+// AI ASSISTANT (CHAT) CORE LOGIC
+// ==========================================================================
+
+// チャット履歴 (role, parts: [{text: ...}])
+appState.chatHistory = [];
+
+// 最新のアプリ内データをマークダウン形式のテキストにコンテキスト化する
+function getAppContextAsText() {
+  let context = "【現在のアプリ内のデータ状況】\n\n";
+
+  // 1. 目標 (Goals)
+  context += "■ 目標・マイルストーン一覧:\n";
+  if (appState.goals && appState.goals.length > 0) {
+    appState.goals.forEach(g => {
+      context += `- 目標: ${g.title}\n`;
+      if (g.milestones && g.milestones.length > 0) {
+        g.milestones.forEach(m => {
+          context += `  * マイルストーン: ${m.title} (期限: ${m.duedate || "設定なし"}, 状態: ${m.completed ? "完了" : "未完了"})\n`;
+        });
+      }
+    });
+  } else {
+    context += "(登録されている目標はありません)\n";
+  }
+  context += "\n";
+
+  // 2. タスク (Tasks)
+  context += "■ タスク一覧:\n";
+  if (appState.tasks && appState.tasks.length > 0) {
+    appState.tasks.forEach(t => {
+      const statusText = t.status === "completed" ? "完了" : "未完了";
+      context += `- [${statusText}] ${t.title} (期限: ${t.duedate || "期限なし"}, 優先度: ${t.priority || "設定なし"}, カンバン分類: ${t.status})\n`;
+    });
+  } else {
+    context += "(登録されているタスクはありません)\n";
+  }
+  context += "\n";
+
+  // 3. 予定 (Schedules)
+  context += "■ 予定（スケジュール）一覧:\n";
+  if (appState.schedules && appState.schedules.length > 0) {
+    appState.schedules.forEach(s => {
+      const externalText = s.isExternal ? "外部カレンダー連携" : "手動追加";
+      context += `- ${s.title} (${s.startDate} ${s.startTime || ""} 〜 ${s.endDate} ${s.endTime || ""}, 区分: ${externalText})\n`;
+    });
+  } else {
+    context += "(登録されている予定はありません)\n";
+  }
+  context += "\n";
+
+  // 4. メモ (Notes)
+  context += "■ メモ一覧:\n";
+  if (appState.notes && appState.notes.length > 0) {
+    const activeNotes = appState.notes.filter(n => !n.dashboardArchived);
+    const notesToShow = activeNotes.slice(0, 5);
+    notesToShow.forEach(n => {
+      const firstLine = n.content.trim().split("\n")[0] || "無題のメモ";
+      context += `- [作成日: ${n.date}] ${firstLine}...\n`;
+    });
+    if (activeNotes.length > 5) {
+      context += `(他 ${activeNotes.length - 5} 件のメモがあります)\n`;
+    }
+  } else {
+    context += "(登録されているメモはありません)\n";
+  }
+
+  return context;
+}
+
+// チャットのスクロール制御
+function scrollToChatBottom() {
+  const box = document.getElementById("chat-messages-box");
+  if (box) {
+    setTimeout(() => {
+      box.scrollTop = box.scrollHeight;
+    }, 50);
+  }
+}
+
+// 簡易トースト通知
+function showNotification(message) {
+  let toast = document.getElementById("app-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "app-toast";
+    toast.style.cssText = "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(16,185,129,0.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:12.5px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;transition:opacity 0.3s;pointer-events:none;opacity:0;";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.opacity = "1";
+  setTimeout(() => {
+    toast.style.opacity = "0";
+  }, 2500);
+}
+
+// HTMLエスケープ
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// 簡易マークダウンパース
+function parseMarkdown(text) {
+  let html = escapeHtml(text);
+
+  // コードブロック: ```javascript ... ```
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    return `<pre><code class="language-${lang}">${code}</code></pre>`;
+  });
+
+  // インラインコード: `code`
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  // 太字: **text**
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+
+  // 改行を <br> に
+  html = html.replace(/\n/g, "<br>");
+
+  return html;
+}
+
+// 現在のタスク・予定の最新状況をAIに明示的に同期させる
+function syncChatContext() {
+  const badge = document.getElementById("chat-sync-badge");
+  const badgeText = document.getElementById("chat-sync-text");
+  
+  if (badge) {
+    badge.style.display = "flex";
+    badgeText.textContent = "同期中...";
+  }
+
+  // AIに伝えるコンテキストデータを準備
+  const taskCount = appState.tasks ? appState.tasks.filter(t => t.status !== "completed").length : 0;
+  const schedCount = appState.schedules ? appState.schedules.length : 0;
+
+  setTimeout(() => {
+    if (badgeText) {
+      badgeText.textContent = `同期完了 (タスク:${taskCount}件 / 予定:${schedCount}件)`;
+    }
+    showNotification("最新のタスクと予定を同期しました。");
+  }, 600);
+}
+
+// チャット履歴クリア
+function clearChatHistory() {
+  appState.chatHistory = [];
+  const box = document.getElementById("chat-messages-box");
+  if (box) {
+    box.innerHTML = `
+      <div class="chat-message assistant" style="display:flex; gap:12px; max-width:85%; align-self:flex-start;">
+        <div class="message-avatar" style="width:32px; height:32px; border-radius:50%; background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.3); display:flex; align-items:center; justify-content:center; color:#a855f7; flex-shrink:0;">
+          <i data-lucide="bot" style="width:18px; height:18px;"></i>
+        </div>
+        <div class="message-content" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:0 12px 12px 12px; padding:12px 16px; color:rgba(255,255,255,0.9); font-size:13px; line-height:1.6; word-break:break-all;">
+          会話履歴をクリアしました。新しく会話を始めることができます。<br>
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-top:6px;">※「最新データを同期」ボタンを押すと、現在のタスクや予定の最新状況をAIが把握します。</span>
+        </div>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  }
+}
+
+// チャット送信ハンドラ
+async function handleChatSend() {
+  const textarea = document.getElementById("chat-input-textarea");
+  if (!textarea) return;
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  // 入力欄クリア
+  textarea.value = "";
+
+  // APIキー確認
+  const apiKey = localStorage.getItem("gemini_api_key");
+  if (!apiKey) {
+    addMessageToScreen("assistant", "Gemini APIキーが設定されていません。設定画面の「AIアシスタント設定」にてAPIキーを保存してください。");
+    return;
+  }
+
+  // 1. ユーザーメッセージを画面に追加
+  addMessageToScreen("user", text);
+  scrollToChatBottom();
+
+  // 2. ローディングドットを画面に追加
+  const loadingEl = addLoadingIndicatorToScreen();
+  scrollToChatBottom();
+
+  try {
+    // 最新のタスク・予定コンテキストを取得
+    const contextText = getAppContextAsText();
+
+    // システム指示プロンプト
+    const systemPrompt = `あなたは個人向けの仕事効率化AIアシスタントです。アプリ名「LifeOrbit」の中で動いています。
+ユーザーのタスク、予定（スケジュール）、目標、メモの状況をすべて把握したうえで、ユーザーの仕事全般のアドバイスやサポートをしてください。
+
+トーンはプロフェッショナルで簡潔にしてください。過剰な説明テキストや、かしこまりすぎた冗長な挨拶は不要です。質問に対して具体的でアクション可能なアドバイスを返してください。
+
+現在のユーザーのデータは以下の通りです。
+${contextText}`;
+
+    // Gemini API用のリクエスト履歴構築
+    const apiHistory = [];
+    appState.chatHistory.forEach(msg => {
+      apiHistory.push({
+        role: msg.role === "user" ? "user" : "model",
+        parts: [{ text: msg.content }]
+      });
+    });
+
+    // 今回のメッセージを追加
+    apiHistory.push({
+      role: "user",
+      parts: [{ text: text }]
+    });
+
+    // リクエスト送信
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: apiHistory,
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      const errMsg = errData.error ? errData.error.message : response.statusText;
+      throw new Error(`Gemini API エラー: ${errMsg}`);
+    }
+
+    const resJson = await response.json();
+    const replyText = resJson.candidates[0].content.parts[0].text;
+
+    // ローディングインジケーターを削除
+    if (loadingEl) loadingEl.remove();
+
+    // 3. アシスタントのメッセージを追加
+    addMessageToScreen("assistant", replyText);
+
+    // 履歴に保存
+    appState.chatHistory.push({ role: "user", content: text });
+    appState.chatHistory.push({ role: "assistant", content: replyText });
+    
+    scrollToChatBottom();
+
+  } catch (error) {
+    if (loadingEl) loadingEl.remove();
+    addMessageToScreen("assistant", `エラーが発生しました: ${error.message}`);
+    scrollToChatBottom();
+  }
+}
+
+// 画面にメッセージ追加
+function addMessageToScreen(role, text) {
+  const box = document.getElementById("chat-messages-box");
+  if (!box) return;
+
+  const msgDiv = document.createElement("div");
+  msgDiv.className = `chat-message ${role}`;
+  
+  if (role === "assistant") {
+    msgDiv.style.cssText = "display:flex; gap:12px; max-width:85%; align-self:flex-start;";
+    msgDiv.innerHTML = `
+      <div class="message-avatar" style="width:32px; height:32px; border-radius:50%; background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.3); display:flex; align-items:center; justify-content:center; color:#a855f7; flex-shrink:0;">
+        <i data-lucide="bot" style="width:18px; height:18px;"></i>
+      </div>
+      <div class="message-content" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:0 12px 12px 12px; padding:12px 16px; color:rgba(255,255,255,0.9); font-size:13px; line-height:1.6; word-break:break-all;">
+        ${parseMarkdown(text)}
+      </div>
+    `;
+  } else {
+    // ユーザー
+    msgDiv.innerHTML = `
+      <div class="message-avatar" style="width:32px; height:32px; border-radius:50%; background:rgba(99, 102, 241, 0.15); border:1px solid rgba(99, 102, 241, 0.3); display:flex; align-items:center; justify-content:center; color:#6366f1; flex-shrink:0;">
+        <i data-lucide="user" style="width:18px; height:18px;"></i>
+      </div>
+      <div class="message-content" style="border-radius:12px 0 12px 12px; padding:12px 16px; font-size:13px; line-height:1.6; word-break:break-all;">
+        ${escapeHtml(text).replace(/\n/g, "<br>")}
+      </div>
+    `;
+  }
+
+  box.appendChild(msgDiv);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+// 画面にローディングインジケーターを追加
+function addLoadingIndicatorToScreen() {
+  const box = document.getElementById("chat-messages-box");
+  if (!box) return null;
+
+  const msgDiv = document.createElement("div");
+  msgDiv.className = "chat-message assistant";
+  msgDiv.style.cssText = "display:flex; gap:12px; max-width:85%; align-self:flex-start;";
+  msgDiv.innerHTML = `
+    <div class="message-avatar" style="width:32px; height:32px; border-radius:50%; background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.3); display:flex; align-items:center; justify-content:center; color:#a855f7; flex-shrink:0;">
+      <i data-lucide="bot" style="width:18px; height:18px;"></i>
+    </div>
+    <div class="message-content" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:0 12px 12px 12px; padding:12px 16px; color:rgba(255,255,255,0.9); font-size:13px; line-height:1.6; word-break:break-all; display:flex; align-items:center;">
+      <div class="chat-loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  `;
+  box.appendChild(msgDiv);
+  if (window.lucide) window.lucide.createIcons();
+  return msgDiv;
+}
+
+// グローバル展開
+window.scrollToChatBottom = scrollToChatBottom;
+window.syncChatContext = syncChatContext;
+window.clearChatHistory = clearChatHistory;
+window.handleChatSend = handleChatSend;
+window.showNotification = showNotification;
+window.scrollToChatBottom = scrollToChatBottom;
+window.syncChatContext = syncChatContext;
+window.clearChatHistory = clearChatHistory;
+window.handleChatSend = handleChatSend;
+window.showNotification = showNotification;
 window.initDashboardNote = initDashboardNote;
 window.linkNoteToItem = linkNoteToItem;
 window.renderDashboardStickyNotes = renderDashboardStickyNotes;
