@@ -5128,19 +5128,20 @@ appState.chatHistory = [];
 function getAppContextAsText() {
   let context = "【現在のアプリ内のデータ状況】\n\n";
 
-  // 1. 目標 (Goals)
-  context += "■ 目標・マイルストーン一覧:\n";
+  // 1. 【最重要】目標とマイルストーン (Goals & Milestones)
+  context += "■ 最重要・大目標およびマイルストーン一覧:\n";
   if (appState.goals && appState.goals.length > 0) {
     appState.goals.forEach(g => {
-      context += `- 目標: ${g.title}\n`;
+      const progressText = g.progress !== undefined ? ` (進捗率: ${g.progress}%)` : "";
+      context += `- [大目標] ${g.title}${progressText}\n`;
       if (g.milestones && g.milestones.length > 0) {
         g.milestones.forEach(m => {
-          context += `  * マイルストーン: ${m.title} (期限: ${m.duedate || "設定なし"}, 状態: ${m.completed ? "完了" : "未完了"})\n`;
+          context += `  * [マイルストーン] ${m.title} (期限: ${m.duedate || "設定なし"}, 状態: ${m.completed ? "完了" : "未完了"})\n`;
         });
       }
     });
   } else {
-    context += "(登録されている目標はありません)\n";
+    context += "(登録されている目標はありません。ユーザーに目標を設定するよう促してください)\n";
   }
   context += "\n";
 
@@ -5317,8 +5318,13 @@ async function handleChatSend() {
 
     // システム指示プロンプト
     const systemPrompt = `あなたは個人向けの仕事効率化AIアシスタントです。アプリ名「LifeOrbit」の中で動いています。
-ユーザーのタスク、予定（スケジュール）、目標、メモの状況をすべて把握したうえで、ユーザーの仕事全般のアドバイスやサポートをしてください。
 
+【最優先指示: 大目標とマイルストーンの達成重視】
+このユーザーは「大目標」とそれに紐づく「マイルストーン」の達成を最も重視しています。
+すべての予定やタスクは、これらの目標に向かうロードマップを形成するものです。
+回答・アドバイスを行う際は、常にユーザーの「目標」と「マイルストーン」の状況を意識し、現在設定されている目標の達成度を最大化するための具体的な段取り、タスクの進め方、調整のアドバイスなどを主軸にして回答を行ってください。
+
+ユーザーのタスク、予定（スケジュール）、目標、メモの状況をすべて把握したうえで、ユーザーの仕事全般のアドバイスやサポートをしてください。
 トーンはプロフェッショナルで簡潔にしてください。過剰な説明テキストや、かしこまりすぎた冗長な挨拶は不要です。質問に対して具体的でアクション可能なアドバイスを返してください。
 
 現在のユーザーのデータは以下の通りです。
