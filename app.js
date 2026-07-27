@@ -690,9 +690,20 @@ document.addEventListener("DOMContentLoaded", () => {
     initFirebase();
     renderAll();
     startClock();
+
+    // Firebase同期設定が無い場合は即座にローディングを解除
+    const syncKey = localStorage.getItem("firebase_sync_key");
+    const hasConfig = localStorage.getItem("firebase_config") || (typeof DEFAULT_FIREBASE_CONFIG !== "undefined" && DEFAULT_FIREBASE_CONFIG);
+    if (!syncKey || !hasConfig) {
+      hideLoadingScreen();
+    }
+    
+    // 通信遅延やエラー時のための強制解除セーフティタイマー (1.5秒)
+    setTimeout(hideLoadingScreen, 1500);
   } catch (err) {
     alert("LifeOrbit 初期化エラー:\n" + err.message + "\n\nStack Trace:\n" + err.stack);
     console.error("Initialization error:", err);
+    hideLoadingScreen();
   }
 });
 
@@ -704,30 +715,23 @@ function loadData() {
       // 文字化けデータの自動検出
       const isCorrupted = parsed.tasks && parsed.tasks.some(t => t.title && /縲|繧|縺/.test(t.title));
       if (isCorrupted) {
-        console.warn("Corrupted data detected. Resetting to defaults.");
+        console.warn("Corrupted data detected. Resetting to empty state.");
         resetToDefault();
         return;
       }
-      appState.goals = parsed.goals && parsed.goals.length ? parsed.goals : JSON.parse(JSON.stringify(DEFAULT_GOALS));
-      appState.tasks = parsed.tasks && parsed.tasks.length ? parsed.tasks : JSON.parse(JSON.stringify(DEFAULT_TASKS));
-      appState.schedules = parsed.schedules && parsed.schedules.length ? parsed.schedules : JSON.parse(JSON.stringify(DEFAULT_SCHEDULES));
+      appState.goals = parsed.goals || [];
+      appState.tasks = parsed.tasks || [];
+      appState.schedules = parsed.schedules || [];
       appState.notes = parsed.notes || [];
       appState.lastSyncTime = parsed.lastSyncTime || null;
-      // shortName が古いデータに無ければマージ
-      appState.goals.forEach(g => {
-        const def = DEFAULT_GOALS.find(d => d.id === g.id);
-        if (def && !g.shortName) g.shortName = def.shortName;
-      });
-      // 新サンプルデータのマージ
-      let updated = false;
-      DEFAULT_TASKS.forEach(dt => {
-        if (!appState.tasks.some(t => t.id === dt.id)) {
-          appState.tasks.push(JSON.parse(JSON.stringify(dt)));
-          updated = true;
-        }
-      });
       
-      if (updated) saveData();
+      // shortName が古いデータに無ければマージ
+      if (appState.goals && appState.goals.length > 0) {
+        appState.goals.forEach(g => {
+          const def = DEFAULT_GOALS.find(d => d.id === g.id);
+          if (def && !g.shortName) g.shortName = def.shortName;
+        });
+      }
     } catch (e) {
       console.error("Parse error:", e);
       resetToDefault();
@@ -750,12 +754,28 @@ function saveData() {
 }
 
 function resetToDefault() {
+  appState.goals = [];
+  appState.tasks = [];
+  appState.schedules = [];
+  appState.notes = [];
+  appState.lastSyncTime = new Date().toISOString();
+  saveData();
+}
+
+function loadSampleData() {
+  if (typeof saveToUndoStack === "function") saveToUndoStack();
   appState.goals = JSON.parse(JSON.stringify(DEFAULT_GOALS));
   appState.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
   appState.schedules = JSON.parse(JSON.stringify(DEFAULT_SCHEDULES));
   appState.notes = [];
-  appState.lastSyncTime = "2026-07-10T09:00:00+09:00";
+  appState.lastSyncTime = new Date().toISOString();
   saveData();
+  renderAll();
+  if (typeof showNotification === "function") {
+    showNotification("サンプル見本データをロードしました。");
+  } else {
+    alert("サンプル見本データをロードしました。");
+  }
 }
 
 // ==========================================================================
@@ -3265,7 +3285,7 @@ function setupEventListeners() {
   if (btnImportText) btnImportText.addEventListener("click", importDataFromText);
   const btnReset = document.getElementById("btn-reset-app");
   if (btnReset) btnReset.addEventListener("click", () => {
-    if (confirm("すべてのデータをサンプルデータでリセットします。よろしいですか？")) { resetToDefault(); renderAll(); }
+    if (confirm("すべてのデータをサンプルデータでリセットします。よろしいですか？")) { loadSampleData(); }
   });
 
 
@@ -4136,8 +4156,11 @@ function loadFirebaseData(syncKey) {
       console.log("Firestoreにデータがありません。現在のローカルデータを同期先にアップロードします。");
       syncDataToFirebase();
     }
+    // 最初の読み込みまたは更新完了時点でローディング画面をフェードアウト
+    if (typeof hideLoadingScreen === "function") hideLoadingScreen();
   }, (error) => {
     console.error("Firestore Load/Snapshot Error:", error);
+    if (typeof hideLoadingScreen === "function") hideLoadingScreen();
   });
 }
 
@@ -5673,3 +5696,28 @@ function executeFunctionCall(name, args) {
 
 window.getDefaultSystemPrompt = getDefaultSystemPrompt;
 window.executeFunctionCall = executeFunctionCall;
+
+// 初期ロード画面を非表示にする
+function hideLoadingScreen() {
+  const loader = document.getElementById("app-loading-screen");
+  if (loader) {
+    loader.style.opacity = "0";
+    loader.style.transform = "scale(1.03)";
+    loader.style.pointerEvents = "none";
+    setTimeout(() => {
+      loader.style.display = "none";
+    }, 450);
+  }
+}
+
+// Webフォント読み込み完了時に自動再描画してスケジュールのレイアウト崩れを防ぐ
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    console.log("Web fonts loaded. Recalculating dashboard/timeline layout.");
+    requestAnimationFrame(() => {
+      renderAll();
+    });
+  });
+}
+
+window.hideLoadingScreen = hideLoadingScreen;
